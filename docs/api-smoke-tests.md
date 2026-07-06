@@ -36,6 +36,24 @@ For remote D1:
 npm run user:create-admin -- --email admin@example.com --password "ChangeMeNow123!" --remote
 ```
 
+## Reset password
+
+List users:
+
+```powershell
+npm run user:list -- --remote
+```
+
+Reset password (use env vars to avoid PowerShell `!` issues):
+
+```powershell
+$env:ADMIN_EMAIL = "your@email.com"
+$env:ADMIN_PASSWORD = "YourNewSecurePassword123"
+npm run user:reset-password -- --remote
+```
+
+Password must be at least 12 characters. Reset revokes all sessions for that user.
+
 ## Login
 
 ```powershell

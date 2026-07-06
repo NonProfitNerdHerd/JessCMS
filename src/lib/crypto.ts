@@ -1,4 +1,4 @@
-const PBKDF2_ITERATIONS = 310_000;
+const PBKDF2_ITERATIONS = 100_000;
 const SALT_BYTES = 16;
 const SESSION_TOKEN_BYTES = 32;
 
@@ -63,26 +63,34 @@ export async function verifyPassword(
   password: string,
   stored: string,
 ): Promise<boolean> {
-  const parts = stored.split("$");
-  if (parts.length !== 4 || parts[0] !== "pbkdf2_sha256") {
+  try {
+    const parts = stored.split("$");
+    if (parts.length !== 4 || parts[0] !== "pbkdf2_sha256") {
+      return false;
+    }
+
+    const iterations = Number(parts[1]);
+    if (!Number.isFinite(iterations) || iterations < 1 || iterations > PBKDF2_ITERATIONS) {
+      return false;
+    }
+
+    const salt = fromBase64Url(parts[2]);
+    const expectedHash = fromBase64Url(parts[3]);
+    const actualHash = await pbkdf2Sha256(password, salt, iterations);
+
+    if (expectedHash.length !== actualHash.length) {
+      return false;
+    }
+
+    let mismatch = 0;
+    for (let index = 0; index < expectedHash.length; index += 1) {
+      mismatch |= expectedHash[index] ^ actualHash[index];
+    }
+
+    return mismatch === 0;
+  } catch {
     return false;
   }
-
-  const iterations = Number(parts[1]);
-  const salt = fromBase64Url(parts[2]);
-  const expectedHash = fromBase64Url(parts[3]);
-  const actualHash = await pbkdf2Sha256(password, salt, iterations);
-
-  if (expectedHash.length !== actualHash.length) {
-    return false;
-  }
-
-  let mismatch = 0;
-  for (let index = 0; index < expectedHash.length; index += 1) {
-    mismatch |= expectedHash[index] ^ actualHash[index];
-  }
-
-  return mismatch === 0;
 }
 
 export function generateSessionToken(): string {

@@ -11,6 +11,8 @@
     "db:migrate:remote": "wrangler d1 migrations apply jesscms-db --remote",
     "types": "wrangler types",
     "user:create-admin": "node scripts/create-admin.mjs",
+    "user:reset-password": "node scripts/reset-password.mjs",
+    "user:list": "node scripts/reset-password.mjs --list",
     "test:admin": "node scripts/admin-smoke-test.mjs"
   },
   "devDependencies": {

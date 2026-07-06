@@ -1,54 +1,11 @@
-#!/usr/bin/env node
-
 import { execSync } from "node:child_process";
-import { randomUUID, webcrypto } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { parseArgs } from "node:util";
-
-const PBKDF2_ITERATIONS = 310_000;
-const SALT_BYTES = 16;
-
-function toBase64Url(bytes) {
-  return Buffer.from(bytes)
-    .toString("base64")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
-}
-
-async function hashPassword(password) {
-  const salt = webcrypto.getRandomValues(new Uint8Array(SALT_BYTES));
-  const keyMaterial = await webcrypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(password),
-    "PBKDF2",
-    false,
-    ["deriveBits"],
-  );
-  const bits = await webcrypto.subtle.deriveBits(
-    {
-      name: "PBKDF2",
-      salt,
-      iterations: PBKDF2_ITERATIONS,
-      hash: "SHA-256",
-    },
-    keyMaterial,
-    256,
-  );
-
-  return `pbkdf2_sha256$${PBKDF2_ITERATIONS}$${toBase64Url(new Uint8Array(salt))}$${toBase64Url(new Uint8Array(bits))}`;
-}
-
-function sqlString(value) {
-  return `'${String(value).replace(/'/g, "''")}'`;
-}
-
-function runWrangler(command, remote) {
-  const flag = remote ? "--remote" : "--local";
-  return execSync(`npx wrangler d1 execute jesscms-db ${flag} --command ${JSON.stringify(command)}`, {
-    stdio: ["ignore", "pipe", "pipe"],
-    encoding: "utf8",
-  });
-}
+import {
+  hashPassword,
+  runWrangler,
+  sqlString,
+} from "./password-utils.mjs";
 
 const { values } = parseArgs({
   options: {
