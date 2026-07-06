@@ -1,0 +1,30 @@
+{
+  "id": "core-seo",
+  "name": "Core SEO",
+  "version": "0.1.0",
+  "description": "SEO fields on content types and meta tag helpers.",
+  "enabled": true,
+  "admin_routes": [
+    { "path": "/seo", "label": "SEO", "icon": "search" }
+  ],
+  "api_routes": [
+    { "method": "GET", "path": "/sitemap", "handler": "getSitemap" }
+  ],
+  "blocks": [],
+  "settings_schema": {
+    "type": "object",
+    "properties": {
+      "default_seo_title_suffix": {
+        "type": "string",
+        "default": "",
+        "description": "Appended to page titles (e.g. ' | My Site')"
+      },
+      "robots_default": {
+        "type": "string",
+        "default": "index, follow",
+        "description": "Default robots meta tag value"
+      }
+    }
+  },
+  "permissions": ["seo.read", "seo.write"]
+}

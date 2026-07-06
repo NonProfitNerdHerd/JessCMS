@@ -1,0 +1,14 @@
+name = "jesscms"
+main = "src/index.ts"
+compatibility_date = "2026-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# After running `npm run db:create`, paste the database_id below.
+[[d1_databases]]
+binding = "DB"
+database_name = "jesscms-db"
+database_id = "0ea4cbc2-9559-4faa-86c8-9b388284c66e"
+migrations_dir = "migrations"
+
+[assets]
+directory = "./public"

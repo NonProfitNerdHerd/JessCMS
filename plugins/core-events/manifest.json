@@ -1,0 +1,33 @@
+{
+  "id": "core-events",
+  "name": "Core Events",
+  "version": "0.1.0",
+  "description": "Event content type, scheduling fields, and event_list block.",
+  "enabled": true,
+  "admin_routes": [
+    { "path": "/events", "label": "Events", "icon": "calendar" }
+  ],
+  "api_routes": [
+    { "method": "GET", "path": "/events", "handler": "listEvents" },
+    { "method": "GET", "path": "/events/:id", "handler": "getEvent" }
+  ],
+  "blocks": [
+    { "type": "event_list", "label": "Event List", "category": "content" }
+  ],
+  "settings_schema": {
+    "type": "object",
+    "properties": {
+      "default_timezone": {
+        "type": "string",
+        "default": "America/Chicago",
+        "description": "Default timezone for new events"
+      },
+      "upcoming_limit": {
+        "type": "integer",
+        "default": 10,
+        "description": "Default number of events in event_list block"
+      }
+    }
+  },
+  "permissions": ["events.read", "events.write", "events.publish"]
+}

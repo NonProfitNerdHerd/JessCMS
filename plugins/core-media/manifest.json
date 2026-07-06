@@ -1,0 +1,33 @@
+{
+  "id": "core-media",
+  "name": "Core Media",
+  "version": "0.1.0",
+  "description": "Media library metadata and image block integration.",
+  "enabled": true,
+  "admin_routes": [
+    { "path": "/media", "label": "Media", "icon": "image" }
+  ],
+  "api_routes": [
+    { "method": "GET", "path": "/media", "handler": "listMedia" },
+    { "method": "GET", "path": "/media/:id", "handler": "getMedia" }
+  ],
+  "blocks": [
+    { "type": "image", "label": "Image", "category": "media" }
+  ],
+  "settings_schema": {
+    "type": "object",
+    "properties": {
+      "max_upload_size_mb": {
+        "type": "integer",
+        "default": 10,
+        "description": "Maximum upload size in megabytes"
+      },
+      "allowed_mime_types": {
+        "type": "array",
+        "default": ["image/jpeg", "image/png", "image/webp", "image/gif"],
+        "description": "Allowed MIME types for uploads"
+      }
+    }
+  },
+  "permissions": ["media.read", "media.write", "media.delete"]
+}

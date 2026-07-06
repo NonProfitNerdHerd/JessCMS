@@ -1,0 +1,21 @@
+{
+  "name": "jesscms",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:create": "wrangler d1 create jesscms-db",
+    "db:migrate:local": "wrangler d1 migrations apply jesscms-db --local",
+    "db:migrate:remote": "wrangler d1 migrations apply jesscms-db --remote",
+    "types": "wrangler types",
+    "user:create-admin": "node scripts/create-admin.mjs",
+    "test:admin": "node scripts/admin-smoke-test.mjs"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250317.0",
+    "typescript": "^5.8.3",
+    "wrangler": "^4.14.0"
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "id": "storm-chaser-example",
+  "name": "Storm Chaser Example",
+  "version": "0.1.0",
+  "description": "Example vertical plugin for storm chaser sites: alerts, radar, livestream blocks.",
+  "enabled": false,
+  "admin_routes": [
+    { "path": "/alerts", "label": "Weather Alerts", "icon": "alert-triangle" },
+    { "path": "/radar", "label": "Radar", "icon": "cloud-lightning" }
+  ],
+  "api_routes": [
+    { "method": "GET", "path": "/alerts", "handler": "listAlerts" },
+    { "method": "GET", "path": "/radar/regions", "handler": "listRadarRegions" }
+  ],
+  "blocks": [
+    { "type": "alert_banner", "label": "Alert Banner", "category": "storm" },
+    { "type": "plugin_block", "label": "Radar Embed", "category": "storm", "block_type": "radar_embed" }
+  ],
+  "settings_schema": {
+    "type": "object",
+    "properties": {
+      "default_radar_region": {
+        "type": "string",
+        "default": "midwest",
+        "description": "Default radar region for embed blocks"
+      },
+      "alert_severity_colors": {
+        "type": "object",
+        "default": {
+          "info": "#3b82f6",
+          "warning": "#f59e0b",
+          "severe": "#ef4444"
+        }
+      }
+    }
+  },
+  "permissions": ["storm.alerts.read", "storm.radar.read"]
+}
