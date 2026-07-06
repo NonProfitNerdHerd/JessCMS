@@ -123,6 +123,6 @@ export function sourceTableForContentType(typeKey: string): string | null {
     case "form":
       return "forms";
     default:
-      return null;
+      return "content_entries";
   }
 }

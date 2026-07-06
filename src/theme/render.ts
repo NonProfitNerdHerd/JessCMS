@@ -1,6 +1,6 @@
 import { escapeHtml } from "../blocks/render";
 import { renderContentCard, renderPagination } from "./components/html";
-import { formatDate, renderEventBody, renderPageBody, renderPostBody } from "./content";
+import { formatDate, renderEventBody, renderGenericEntryBody, renderPageBody, renderPostBody } from "./content";
 import { renderByTemplate } from "./layouts/index";
 import type { PublicContext } from "../public/types";
 
@@ -40,6 +40,11 @@ export function renderPublicView(ctx: PublicContext): string {
       const event = view.event!;
       const header = `<header class="jess-page-header"><h1>${escapeHtml(event.title)}</h1></header>`;
       return renderByTemplate(ctx, `${header}${renderEventBody(event)}`);
+    }
+    case "generic-content": {
+      const entry = view.entry!;
+      const header = `<header class="jess-page-header"><h1>${escapeHtml(entry.title)}</h1>${entry.excerpt ? `<p class="jess-intro">${escapeHtml(entry.excerpt)}</p>` : ""}</header>`;
+      return renderByTemplate(ctx, `${header}${renderGenericEntryBody(entry)}`);
     }
     case "blog-index": {
       const cards = (view.posts ?? [])

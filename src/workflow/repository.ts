@@ -4,7 +4,7 @@ import { generateId } from "../lib/crypto";
 import { getClientIp, writeAuditLog } from "../db/audit";
 import {
   contentStatusForWorkflowState,
-  entityTypeToTable,
+  resolveEntityStorage,
   type ContentEntityType,
   type WorkflowAction,
   type WorkflowHistoryRecord,
@@ -12,6 +12,8 @@ import {
   type WorkflowStateRecord,
   type WorkflowUpdateInput,
 } from "./types";
+import { syncContentEntryToContentIndex } from "../content-index/repository";
+import { getContentTypeByKey } from "../content-types/registry";
 
 export class WorkflowError extends Error {
   constructor(
@@ -112,9 +114,17 @@ async function contentExists(
   entityType: ContentEntityType,
   entityId: string,
 ): Promise<boolean> {
-  const table = entityTypeToTable(entityType);
+  const storage = resolveEntityStorage(entityType);
+  if (storage.isGeneric) {
+    const row = await db
+      .prepare(`SELECT id FROM content_entries WHERE id = ? AND content_type = ?`)
+      .bind(entityId, storage.contentType)
+      .first<{ id: string }>();
+    return Boolean(row);
+  }
+
   const row = await db
-    .prepare(`SELECT id FROM ${table} WHERE id = ?`)
+    .prepare(`SELECT id FROM ${storage.table} WHERE id = ?`)
     .bind(entityId)
     .first<{ id: string }>();
   return Boolean(row);
@@ -127,7 +137,7 @@ async function syncContentStatus(
   state: WorkflowState,
   scheduledAt?: string | null,
 ): Promise<void> {
-  const table = entityTypeToTable(entityType);
+  const storage = resolveEntityStorage(entityType);
   const status = contentStatusForWorkflowState(state);
   const sets = ["status = ?", "updated_at = datetime('now')"];
   const values: unknown[] = [status];
@@ -142,8 +152,30 @@ async function syncContentStatus(
   }
 
   values.push(entityId);
+
+  if (storage.isGeneric) {
+    values.push(storage.contentType);
+    await db
+      .prepare(
+        `UPDATE content_entries SET ${sets.join(", ")} WHERE id = ? AND content_type = ?`,
+      )
+      .bind(...values)
+      .run();
+
+    const row = await db
+      .prepare(`SELECT * FROM content_entries WHERE id = ? AND content_type = ?`)
+      .bind(entityId, storage.contentType)
+      .first<Record<string, unknown>>();
+
+    const contentType = await getContentTypeByKey(db, storage.contentType);
+    if (row && contentType) {
+      await syncContentEntryToContentIndex(db, row as never, contentType);
+    }
+    return;
+  }
+
   await db
-    .prepare(`UPDATE ${table} SET ${sets.join(", ")} WHERE id = ?`)
+    .prepare(`UPDATE ${storage.table} SET ${sets.join(", ")} WHERE id = ?`)
     .bind(...values)
     .run();
 }

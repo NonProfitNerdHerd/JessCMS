@@ -205,11 +205,97 @@ async function initContentList() {
   await loadContentList(type);
 }
 
+function readMetadataFromForm(form) {
+  const metadata = {};
+  form.querySelectorAll("[data-metadata-key]").forEach((field) => {
+    const key = field.getAttribute("data-metadata-key");
+    if (!key) return;
+    const fieldType = field.getAttribute("data-metadata-type");
+
+    if (field instanceof HTMLInputElement && field.type === "checkbox") {
+      metadata[key] = field.checked;
+      return;
+    }
+
+    if (!(field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement || field instanceof HTMLSelectElement)) {
+      return;
+    }
+
+    if (fieldType === "datetime") {
+      metadata[key] = fromDatetimeLocal(field.value);
+      return;
+    }
+
+    if (fieldType === "json") {
+      if (!field.value.trim()) {
+        metadata[key] = null;
+        return;
+      }
+      metadata[key] = JSON.parse(field.value);
+      return;
+    }
+
+    if (field.value.trim() === "") {
+      metadata[key] = null;
+      return;
+    }
+
+    if (field instanceof HTMLInputElement && field.type === "number") {
+      metadata[key] = Number(field.value);
+      return;
+    }
+
+    metadata[key] = field.value;
+  });
+  return metadata;
+}
+
+function fillMetadataForm(form, metadata) {
+  if (!metadata || typeof metadata !== "object") return;
+  form.querySelectorAll("[data-metadata-key]").forEach((field) => {
+    const key = field.getAttribute("data-metadata-key");
+    if (!key || !(key in metadata)) return;
+    const value = metadata[key];
+    const fieldType = field.getAttribute("data-metadata-type");
+
+    if (field instanceof HTMLInputElement && field.type === "checkbox") {
+      field.checked = Boolean(value);
+      return;
+    }
+
+    if (!(field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement || field instanceof HTMLSelectElement)) {
+      return;
+    }
+
+    if (value === null || value === undefined) {
+      field.value = "";
+      return;
+    }
+
+    if (fieldType === "datetime") {
+      field.value = toDatetimeLocal(String(value));
+      return;
+    }
+
+    if (fieldType === "json") {
+      field.value = JSON.stringify(value, null, 2);
+      return;
+    }
+
+    field.value = String(value);
+  });
+}
+
 function readContentForm(form) {
   const data = new FormData(form);
   const payload = {};
+  const metadataFields = new Set(
+    [...form.querySelectorAll("[data-metadata-key]")].map((el) => el.getAttribute("name")).filter(Boolean),
+  );
 
   for (const [key, value] of data.entries()) {
+    if (metadataFields.has(key)) continue;
+
     if (String(value).trim() === "") {
       payload[key] = null;
       continue;
@@ -228,11 +314,20 @@ function readContentForm(form) {
     payload[key] = value;
   }
 
+  if (form.querySelector("[data-metadata-key]")) {
+    try {
+      payload.metadata = readMetadataFromForm(form);
+    } catch {
+      payload.metadata = null;
+    }
+  }
+
   return payload;
 }
 
 function fillContentForm(form, item) {
   for (const [key, value] of Object.entries(item)) {
+    if (key === "metadata") continue;
     const field = form.elements.namedItem(key);
     if (!field) continue;
 
@@ -246,6 +341,8 @@ function fillContentForm(form, item) {
       }
     }
   }
+
+  fillMetadataForm(form, item.metadata);
 }
 
 async function initContentEdit() {
@@ -342,6 +439,15 @@ async function initContentEdit() {
     try {
       if (action === "save") {
         delete payload.status;
+      }
+      if (action === "publish") {
+        payload.status = "published";
+        if (!payload.published_at) {
+          payload.published_at = new Date().toISOString();
+        }
+      }
+      if (action === "archive") {
+        payload.status = "archived";
       }
       if (action === "delete") {
         if (!confirm("Delete this item?")) return;
@@ -524,10 +630,18 @@ function readMediaForm(form) {
   return data;
 }
 
+function mediaDisplayUrl(item) {
+  if (!item) return "";
+  return item.resolved_url || item.public_url || "";
+}
+
 function renderMediaGridItem(item) {
+  const displayUrl = mediaDisplayUrl(item);
   const thumb = window.JessMediaLibrary?.isImageMime(item.mime_type)
-    ? `<img src="${escapeHtml(item.public_url)}" alt="${escapeHtml(item.alt_text || item.title || "")}" loading="lazy">`
+    ? `<img src="${escapeHtml(displayUrl)}" alt="${escapeHtml(item.alt_text || item.title || "")}" loading="lazy">`
     : `<div class="media-thumb-file">${escapeHtml((item.mime_type || "file").split("/").pop())}</div>`;
+
+  const providerLabel = item.storage_provider === "r2" ? "R2" : "URL";
 
   return `
     <article class="media-grid-item">
@@ -535,10 +649,10 @@ function renderMediaGridItem(item) {
         <div class="media-grid-thumb">${thumb}</div>
         <div class="media-grid-meta">
           <strong>${escapeHtml(item.title || item.filename)}</strong>
-          <span class="muted">${escapeHtml(item.folder || "—")}</span>
+          <span class="muted">${escapeHtml(item.folder || "—")} · ${providerLabel}</span>
         </div>
       </a>
-      <button type="button" class="btn btn-secondary btn-sm media-copy-btn" data-url="${escapeHtml(item.public_url || "")}">Copy URL</button>
+      <button type="button" class="btn btn-secondary btn-sm media-copy-btn" data-url="${escapeHtml(displayUrl)}">Copy URL</button>
     </article>
   `;
 }
@@ -637,14 +751,121 @@ async function initMediaForm() {
   const errorEl = document.getElementById("media-error");
   const successEl = document.getElementById("media-success");
   const preview = document.getElementById("media-preview");
+  const storageLabel = document.getElementById("media-storage-label");
   const id = document.body.dataset.id;
   const isNew = id === "new";
+  let selectedUploadFile = null;
 
   const refreshPreview = (item) => {
     if (window.JessMediaLibrary) {
       window.JessMediaLibrary.renderPreview(item, preview);
     }
+    if (storageLabel && item?.storage_provider) {
+      storageLabel.textContent =
+        item.storage_provider === "r2"
+          ? `Stored in R2${item.storage_key ? `: ${item.storage_key}` : ""}`
+          : "External URL media";
+    }
   };
+
+  if (isNew) {
+    form?.classList.add("hidden");
+  }
+
+  document.querySelectorAll(".media-mode-tab").forEach((tab) => {
+    tab.addEventListener("click", () => {
+      const mode = tab.dataset.mediaMode;
+      document.querySelectorAll(".media-mode-tab").forEach((el) => {
+        el.classList.toggle("is-active", el.dataset.mediaMode === mode);
+      });
+      document.querySelectorAll("[data-media-panel]").forEach((panel) => {
+        panel.classList.toggle("hidden", panel.dataset.mediaPanel !== mode);
+      });
+      form?.classList.toggle("hidden", mode === "upload");
+    });
+  });
+
+  const uploadInput = document.getElementById("media-upload-input");
+  const uploadDropzone = document.getElementById("media-upload-dropzone");
+  const uploadName = document.getElementById("media-upload-name");
+  const uploadProgress = document.getElementById("media-upload-progress");
+  const uploadProgressBar = document.getElementById("media-upload-progress-bar");
+
+  function setSelectedFile(file) {
+    selectedUploadFile = file;
+    if (uploadName) {
+      uploadName.textContent = file ? `${file.name} (${Math.round(file.size / 1024)} KB)` : "";
+    }
+    if (file && window.JessMediaLibrary?.isImageMime(file.type)) {
+      refreshPreview({ public_url: URL.createObjectURL(file), mime_type: file.type });
+    }
+  }
+
+  document.getElementById("media-upload-browse")?.addEventListener("click", () => {
+    uploadInput?.click();
+  });
+
+  uploadInput?.addEventListener("change", () => {
+    const file = uploadInput.files?.[0];
+    if (file) setSelectedFile(file);
+  });
+
+  uploadDropzone?.addEventListener("dragover", (event) => {
+    event.preventDefault();
+    uploadDropzone.classList.add("is-dragover");
+  });
+
+  uploadDropzone?.addEventListener("dragleave", () => {
+    uploadDropzone.classList.remove("is-dragover");
+  });
+
+  uploadDropzone?.addEventListener("drop", (event) => {
+    event.preventDefault();
+    uploadDropzone.classList.remove("is-dragover");
+    const file = event.dataTransfer?.files?.[0];
+    if (file) setSelectedFile(file);
+  });
+
+  document.getElementById("media-upload-submit")?.addEventListener("click", async () => {
+    hideError(errorEl);
+    hideSuccess(successEl);
+
+    if (!selectedUploadFile) {
+      showError(errorEl, "Choose a file to upload.");
+      return;
+    }
+
+    const payload = new FormData();
+    payload.append("file", selectedUploadFile);
+    payload.append("title", form?.elements.namedItem("upload_title")?.value || selectedUploadFile.name);
+    payload.append("folder", form?.elements.namedItem("upload_folder")?.value || "");
+    payload.append("alt_text", form?.elements.namedItem("upload_alt_text")?.value || "");
+    payload.append("caption", form?.elements.namedItem("upload_caption")?.value || "");
+    payload.append("description", form?.elements.namedItem("upload_description")?.value || "");
+
+    uploadProgress?.classList.remove("hidden");
+    if (uploadProgressBar) uploadProgressBar.style.width = "35%";
+
+    try {
+      const response = await fetch("/api/media/upload", {
+        method: "POST",
+        credentials: "include",
+        body: payload,
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(body.error || `Upload failed (${response.status})`);
+      }
+      if (uploadProgressBar) uploadProgressBar.style.width = "100%";
+      const created = body.data ?? body;
+      window.location.href = `/admin/media/${created.id}`;
+    } catch (error) {
+      showError(errorEl, error.message);
+    } finally {
+      uploadProgress?.classList.add("hidden");
+      if (uploadProgressBar) uploadProgressBar.style.width = "0%";
+    }
+  });
 
   if (!isNew) {
     try {
@@ -664,7 +885,9 @@ async function initMediaForm() {
   });
 
   document.getElementById("copy-url-btn")?.addEventListener("click", async () => {
-    const url = form?.elements.namedItem("public_url")?.value;
+    const url =
+      form?.elements.namedItem("public_url")?.value ||
+      mediaDisplayUrl(await api(`/api/media/${id}`).catch(() => null));
     const copied = await window.JessMediaLibrary?.copyUrl(url);
     if (copied) {
       showSuccess(successEl, "URL copied to clipboard.");
@@ -672,10 +895,23 @@ async function initMediaForm() {
   });
 
   document.getElementById("delete-media-btn")?.addEventListener("click", async () => {
-    if (!confirm("Delete this media item?")) return;
+    let referenceCount = 0;
+    try {
+      const item = await api(`/api/media/${id}`);
+      referenceCount = item.reference_count ?? 0;
+    } catch {
+      // ignore
+    }
+
+    const warning =
+      referenceCount > 0
+        ? `This media item is referenced by ${referenceCount} content item(s). Delete anyway?`
+        : "Delete this media item?";
+    if (!confirm(warning)) return;
     hideError(errorEl);
     try {
-      await api(`/api/media/${id}`, { method: "DELETE" });
+      const query = referenceCount > 0 ? "?force=1" : "";
+      await api(`/api/media/${id}${query}`, { method: "DELETE" });
       window.location.href = "/admin/media";
     } catch (error) {
       showError(errorEl, error.message);
@@ -688,6 +924,10 @@ async function initMediaForm() {
     hideSuccess(successEl);
 
     const payload = readMediaForm(form);
+    if (!payload.public_url) {
+      showError(errorEl, "Public URL is required for external URL media.");
+      return;
+    }
 
     try {
       if (isNew) {
@@ -1176,9 +1416,11 @@ document.addEventListener("DOMContentLoaded", () => {
       initDashboard();
       break;
     case "content-list":
+    case "generic-content-list":
       initContentList();
       break;
     case "content-edit":
+    case "generic-content-edit":
       initContentEdit();
       break;
     case "theme":

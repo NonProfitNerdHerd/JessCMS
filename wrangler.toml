@@ -10,6 +10,11 @@ database_name = "jesscms-db"
 database_id = "0ea4cbc2-9559-4faa-86c8-9b388284c66e"
 migrations_dir = "migrations"
 
+# R2 media storage — create bucket: wrangler r2 bucket create jesscms-media
+[[r2_buckets]]
+binding = "MEDIA_BUCKET"
+bucket_name = "jesscms-media"
+
 [assets]
 directory = "./public"
 binding = "ASSETS"

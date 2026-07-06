@@ -94,6 +94,10 @@ assert("featured image picker present", html(page.body).includes("data-featured-
 const mediaAdmin = await req("/admin/media");
 assert("media library admin page", mediaAdmin.status === 200 && html(mediaAdmin.body).includes("media-grid"));
 
+const mediaNew = await req("/admin/media/new");
+assert("media new page has upload UI", mediaNew.status === 200 && html(mediaNew.body).includes("media-upload-dropzone"));
+assert("media new page has URL tab", html(mediaNew.body).includes("data-media-mode=\"url\""));
+
 const mediaEdit = await req(`/admin/media/${mediaId}`);
 assert("media edit admin page", mediaEdit.status === 200 && html(mediaEdit.body).includes("media-form"));
 

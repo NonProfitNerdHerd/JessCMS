@@ -126,8 +126,8 @@ export async function syncRuntimeToDatabase(env: Env): Promise<RuntimeSnapshot> 
           supports_json, supports_html, supports_revisions, supports_workflow,
           supports_seo, supports_featured_image, supports_author, supports_parent,
           supports_archive, supports_public_routes, route_base, admin_base, icon,
-          updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+          schema_json, settings_json, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
         ON CONFLICT(type_key) DO UPDATE SET
           label = excluded.label,
           plural_label = excluded.plural_label,
@@ -148,6 +148,8 @@ export async function syncRuntimeToDatabase(env: Env): Promise<RuntimeSnapshot> 
           route_base = excluded.route_base,
           admin_base = excluded.admin_base,
           icon = excluded.icon,
+          schema_json = excluded.schema_json,
+          settings_json = excluded.settings_json,
           updated_at = datetime('now')
       `,
     )
@@ -173,7 +175,22 @@ export async function syncRuntimeToDatabase(env: Env): Promise<RuntimeSnapshot> 
         type.route_base ?? null,
         type.admin_base ?? null,
         type.icon ?? null,
+        type.schema_json ? JSON.stringify(type.schema_json) : null,
+        type.settings_json ? JSON.stringify(type.settings_json) : null,
       )
+      .run();
+  }
+
+  for (const plugin of snapshot.plugins) {
+    if (plugin.enabled || plugin.manifest.id === CORE_PLUGIN_ID) continue;
+    await env.DB.prepare(
+      `
+        UPDATE content_types
+        SET enabled = 0, updated_at = datetime('now')
+        WHERE plugin_id = ?
+      `,
+    )
+      .bind(plugin.manifest.id)
       .run();
   }
 

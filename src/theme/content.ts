@@ -1,4 +1,4 @@
-import { parseContentDocument } from "../blocks/render";
+import { parseContentDocument, escapeHtml } from "../blocks/render";
 import { getPluginBlockRenderers } from "./hooks";
 import { renderPublicBlock } from "../blocks/registry";
 import type { Block } from "../blocks/render";
@@ -40,6 +40,25 @@ export function renderEventBody(event: EventRecord): string {
     ${event.location_name ? `<p><strong>Where:</strong> ${event.location_name}</p>` : ""}
   </div>`;
   return `<article class="jess-content jess-event-body">${meta}${renderRecordBody(event)}</article>`;
+}
+
+export function renderGenericEntryBody(entry: {
+  content_json: string | null;
+  content_html: string | null;
+  metadata?: Record<string, unknown> | null;
+}): string {
+  const metadata = entry.metadata ?? {};
+  const metaKeys = Object.keys(metadata);
+  const metaHtml =
+    metaKeys.length > 0
+      ? `<dl class="jess-entry-meta">${metaKeys
+          .map(
+            (key) =>
+              `<dt>${escapeHtml(key)}</dt><dd>${escapeHtml(String(metadata[key] ?? ""))}</dd>`,
+          )
+          .join("")}</dl>`
+      : "";
+  return `<article class="jess-content jess-generic-body">${metaHtml}${renderRecordBody(entry)}</article>`;
 }
 
 export function formatDate(value: string | null | undefined): string {

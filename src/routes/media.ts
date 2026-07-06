@@ -1,7 +1,9 @@
 import { isAuthUser, requirePermission } from "../auth";
 import { getClientIp, writeAuditLog } from "../db/audit";
 import {
+  countMediaReferences,
   createMedia,
+  createUploadedMedia,
   deleteMedia,
   getMediaById,
   listMedia,
@@ -13,7 +15,9 @@ import {
   type CreateMediaInput,
   type UpdateMediaInput,
 } from "../media/repository";
-import { getMediaStorageProvider } from "../media/storage";
+import { uploadMediaToR2 } from "../media/upload";
+import { getMediaStorageProvider, getR2Bucket } from "../media/storage";
+import { enrichMediaRecord } from "./media-serve";
 import {
   badRequest,
   created,
@@ -45,6 +49,10 @@ function parseListOptions(url: URL) {
   };
 }
 
+function requestOrigin(request: Request): string {
+  return new URL(request.url).origin;
+}
+
 export async function handleListMedia(request: Request, env: Env): Promise<Response> {
   const authResult = await requirePermission(request, env, "media:read");
   if (!isAuthUser(authResult)) {
@@ -59,8 +67,13 @@ export async function handleListMedia(request: Request, env: Env): Promise<Respo
       ? await listMediaFolders(env.DB)
       : undefined;
 
+    const origin = requestOrigin(request);
+    const enriched = await Promise.all(
+      items.map((item) => enrichMediaRecord(item, env, origin)),
+    );
+
     return ok({
-      items,
+      items: enriched,
       count,
       limit: options.limit,
       offset: options.offset,
@@ -72,11 +85,11 @@ export async function handleListMedia(request: Request, env: Env): Promise<Respo
 }
 
 export async function handleGetMediaById(
-  _request: Request,
+  request: Request,
   env: Env,
   params: Record<string, string>,
 ): Promise<Response> {
-  const authResult = await requirePermission(_request, env, "media:read");
+  const authResult = await requirePermission(request, env, "media:read");
   if (!isAuthUser(authResult)) {
     return authResult;
   }
@@ -87,10 +100,7 @@ export async function handleGetMediaById(
       return notFound();
     }
 
-    const provider = getMediaStorageProvider(item);
-    const resolved_url = await provider.resolvePublicUrl(item);
-
-    return ok({ ...item, resolved_url });
+    return ok(await enrichMediaRecord(item, env, requestOrigin(request)));
   } catch (error) {
     return handleMediaError(error);
   }
@@ -118,10 +128,55 @@ export async function handleCreateMedia(request: Request, env: Env): Promise<Res
       entityType: "media",
       entityId: item.id,
       ipAddress: getClientIp(request),
-      metadata: { title: item.title, public_url: item.public_url },
+      metadata: { title: item.title, public_url: item.public_url, storage_provider: "url" },
     });
 
-    return created(item);
+    return created(await enrichMediaRecord(item, env, requestOrigin(request)));
+  } catch (error) {
+    return handleMediaError(error);
+  }
+}
+
+export async function handleUploadMedia(request: Request, env: Env): Promise<Response> {
+  const authResult = await requirePermission(request, env, "media:create");
+  if (!isAuthUser(authResult)) {
+    return authResult;
+  }
+
+  try {
+    const formData = await request.formData();
+    const file = formData.get("file");
+
+    if (!(file instanceof File)) {
+      return badRequest("Validation failed", { file: "file is required" });
+    }
+
+    const uploaded = await uploadMediaToR2(env, file, {
+      folder: String(formData.get("folder") ?? ""),
+      title: String(formData.get("title") ?? ""),
+      alt_text: String(formData.get("alt_text") ?? ""),
+      caption: String(formData.get("caption") ?? ""),
+      description: String(formData.get("description") ?? ""),
+      uploadedBy: authResult.id,
+    });
+
+    const item = await createUploadedMedia(env.DB, uploaded);
+
+    await writeAuditLog(env.DB, {
+      actorId: authResult.id,
+      action: "create",
+      entityType: "media",
+      entityId: item.id,
+      ipAddress: getClientIp(request),
+      metadata: {
+        title: item.title,
+        storage_provider: "r2",
+        storage_key: item.storage_key,
+        public_url: item.public_url,
+      },
+    });
+
+    return created(await enrichMediaRecord(item, env, requestOrigin(request)));
   } catch (error) {
     return handleMediaError(error);
   }
@@ -155,7 +210,7 @@ export async function handleUpdateMedia(
       ipAddress: getClientIp(request),
     });
 
-    return ok(item);
+    return ok(await enrichMediaRecord(item, env, requestOrigin(request)));
   } catch (error) {
     return handleMediaError(error);
   }
@@ -177,7 +232,17 @@ export async function handleDeleteMedia(
       return notFound();
     }
 
-    const provider = getMediaStorageProvider(existing);
+    const referenceCount = await countMediaReferences(env.DB, params.id);
+    const force = new URL(request.url).searchParams.get("force") === "1";
+
+    if (referenceCount > 0 && !force) {
+      return badRequest("Media is referenced by content", {
+        reference_count: String(referenceCount),
+        message: "Confirm delete to remove anyway",
+      });
+    }
+
+    const provider = getMediaStorageProvider(existing, getR2Bucket(env));
     if (provider.deleteObject) {
       await provider.deleteObject(existing);
     }
@@ -190,9 +255,14 @@ export async function handleDeleteMedia(
       entityType: "media",
       entityId: params.id,
       ipAddress: getClientIp(request),
+      metadata: {
+        storage_provider: existing.storage_provider,
+        storage_key: existing.storage_key,
+        reference_count: referenceCount,
+      },
     });
 
-    return ok({ deleted: true, id: params.id });
+    return ok({ deleted: true, id: params.id, reference_count: referenceCount });
   } catch (error) {
     return handleMediaError(error);
   }

@@ -22,6 +22,20 @@ import {
   handleUpdatePost,
 } from "./routes/content";
 import { handleContentTypes } from "./routes/content-types";
+import {
+  handleCompareGenericRevisions,
+  handleCreateGenericContent,
+  handleDeleteGenericContent,
+  handleGetGenericContentById,
+  handleGetGenericContentBySlug,
+  handleGetGenericRevision,
+  handleGetGenericWorkflow,
+  handleListGenericContent,
+  handleListGenericRevisions,
+  handleRestoreGenericRevision,
+  handleUpdateGenericContent,
+  handleUpdateGenericWorkflow,
+} from "./routes/generic-content";
 import { handleHealth } from "./routes/health";
 import {
   handleDisablePlugin,
@@ -54,7 +68,9 @@ import {
   handleGetMediaById,
   handleListMedia,
   handleUpdateMedia,
+  handleUploadMedia,
 } from "./routes/media";
+import { handleServeMediaFile } from "./routes/media-serve";
 import { registerFormsBuilderPlugin } from "./plugins/forms-builder";
 import {
   handleCreateForm,
@@ -146,6 +162,20 @@ const ROUTES: RouteDefinition[] = [
   paramRoute("DELETE", "/api/events/:id", handleDeleteEvent),
 
   staticRoute("GET", "/api/content/types", (_request, env) => handleContentTypes(env)),
+
+  paramRoute("GET", "/api/content/:contentType/slug/:slug", handleGetGenericContentBySlug),
+  paramRoute("GET", "/api/content/:contentType/:id/revisions/compare", handleCompareGenericRevisions),
+  paramRoute("POST", "/api/content/:contentType/:id/revisions/:revisionId/restore", handleRestoreGenericRevision),
+  paramRoute("GET", "/api/content/:contentType/:id/revisions/:revisionId", handleGetGenericRevision),
+  paramRoute("GET", "/api/content/:contentType/:id/revisions", handleListGenericRevisions),
+  paramRoute("GET", "/api/content/:contentType/:id/workflow", handleGetGenericWorkflow),
+  paramRoute("PUT", "/api/content/:contentType/:id/workflow", handleUpdateGenericWorkflow),
+  paramRoute("GET", "/api/content/:contentType/:id", handleGetGenericContentById),
+  paramRoute("PUT", "/api/content/:contentType/:id", handleUpdateGenericContent),
+  paramRoute("DELETE", "/api/content/:contentType/:id", handleDeleteGenericContent),
+  paramRoute("GET", "/api/content/:contentType", handleListGenericContent),
+  paramRoute("POST", "/api/content/:contentType", handleCreateGenericContent),
+
   staticRoute("GET", "/api/plugins", (_request, env) => handlePlugins(env)),
   paramRoute("GET", "/api/plugins/:id/resources", handleGetPluginResources),
   paramRoute("POST", "/api/plugins/:id/enable", handleEnablePlugin),
@@ -168,6 +198,7 @@ const ROUTES: RouteDefinition[] = [
   staticRoute("GET", "/api/editor/blocks", (_request, env) => handleEditorBlocks(env)),
 
   staticRoute("GET", "/api/media", handleListMedia),
+  staticRoute("POST", "/api/media/upload", handleUploadMedia),
   paramRoute("GET", "/api/media/:id", handleGetMediaById),
   staticRoute("POST", "/api/media", handleCreateMedia),
   paramRoute("PUT", "/api/media/:id", handleUpdateMedia),
@@ -203,6 +234,13 @@ export default {
       const adminResponse = await handleAdminRequest(request, env);
       if (adminResponse) {
         return adminResponse;
+      }
+
+      if (
+        (request.method === "GET" || request.method === "HEAD") &&
+        url.pathname.startsWith("/media/")
+      ) {
+        return handleServeMediaFile(request, env);
       }
 
       const matched = matchRoute(request.method, url.pathname, ROUTES);

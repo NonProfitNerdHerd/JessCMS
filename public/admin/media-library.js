@@ -29,8 +29,12 @@
     return String(mime || "").startsWith("image/");
   }
 
+  function mediaDisplayUrl(item) {
+    return item?.resolved_url || item?.public_url || "";
+  }
+
   function renderThumbnail(item) {
-    const url = item.public_url || item.resolved_url;
+    const url = mediaDisplayUrl(item);
     if (isImageMime(item.mime_type) && url) {
       return `<img src="${escapeHtml(url)}" alt="${escapeHtml(item.alt_text || item.title || "")}" loading="lazy">`;
     }
@@ -68,7 +72,7 @@
         <div class="media-library-grid" id="media-library-grid"></div>
         <footer class="media-library-footer">
           <div id="media-library-pagination" class="admin-pagination"></div>
-          <a class="btn btn-secondary" href="/admin/media/new" target="_blank" rel="noopener">Add new URL</a>
+          <a class="btn btn-secondary" href="/admin/media/new" target="_blank" rel="noopener">Upload / Add URL</a>
         </footer>
       </div>
     `;
@@ -212,7 +216,7 @@
 
   function renderPreview(item, container) {
     if (!container) return;
-    const url = item?.public_url || item?.resolved_url;
+    const url = mediaDisplayUrl(item);
     if (!url) {
       container.innerHTML = `<p class="muted">No preview available</p>`;
       return;
@@ -285,5 +289,6 @@
     api,
     escapeHtml,
     isImageMime,
+    mediaDisplayUrl,
   };
 })(window);

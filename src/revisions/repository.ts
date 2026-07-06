@@ -2,9 +2,11 @@ import type { AuthUser } from "../auth";
 import { generateId } from "../lib/crypto";
 import { getClientIp, writeAuditLog } from "../db/audit";
 import {
-  entityTypeToTable,
+  resolveEntityStorage,
   type ContentEntityType,
 } from "../workflow/types";
+import { syncContentEntryToContentIndex } from "../content-index/repository";
+import { getContentTypeByKey } from "../content-types/registry";
 import type {
   ContentRevisionRecord,
   RevisionCompareResult,
@@ -46,9 +48,31 @@ const SNAPSHOT_FIELDS = [
   "longitude",
   "timezone",
   "event_status",
+  "metadata_json",
+  "content_type",
+  "plugin_id",
   "created_at",
   "updated_at",
 ] as const;
+
+async function fetchEntityRow(
+  db: D1Database,
+  entityType: ContentEntityType,
+  entityId: string,
+): Promise<Record<string, unknown> | null> {
+  const storage = resolveEntityStorage(entityType);
+  if (storage.isGeneric) {
+    return db
+      .prepare(`SELECT * FROM content_entries WHERE id = ? AND content_type = ?`)
+      .bind(entityId, storage.contentType)
+      .first<Record<string, unknown>>();
+  }
+
+  return db
+    .prepare(`SELECT * FROM ${storage.table} WHERE id = ?`)
+    .bind(entityId)
+    .first<Record<string, unknown>>();
+}
 
 export async function createContentRevision(
   db: D1Database,
@@ -57,11 +81,7 @@ export async function createContentRevision(
   authorId: string | null,
   changeSummary?: string | null,
 ): Promise<ContentRevisionRecord> {
-  const table = entityTypeToTable(entityType);
-  const row = await db
-    .prepare(`SELECT * FROM ${table} WHERE id = ?`)
-    .bind(entityId)
-    .first<Record<string, unknown>>();
+  const row = await fetchEntityRow(db, entityType, entityId);
 
   if (!row) {
     throw new RevisionError("Content not found", "not_found");
@@ -239,7 +259,7 @@ export async function restoreRevision(
   }
 
   const snapshot = parseSnapshot(revision);
-  const table = entityTypeToTable(entityType);
+  const storage = resolveEntityStorage(entityType);
 
   const updatable = [
     "title",
@@ -262,6 +282,7 @@ export async function restoreRevision(
     "longitude",
     "timezone",
     "event_status",
+    "metadata_json",
   ];
 
   const sets: string[] = [];
@@ -281,11 +302,54 @@ export async function restoreRevision(
   sets.push("updated_at = datetime('now')");
   values.push(entityId);
 
-  await env.DB.prepare(`UPDATE ${table} SET ${sets.join(", ")} WHERE id = ?`)
+  if (storage.isGeneric) {
+    values.push(storage.contentType);
+    await env.DB.prepare(
+      `UPDATE content_entries SET ${sets.join(", ")} WHERE id = ? AND content_type = ?`,
+    )
+      .bind(...values)
+      .run();
+
+    const restored = await env.DB.prepare(
+      `SELECT * FROM content_entries WHERE id = ? AND content_type = ?`,
+    )
+      .bind(entityId, storage.contentType)
+      .first<Record<string, unknown>>();
+
+    const newRevision = await createContentRevision(
+      env.DB,
+      entityType,
+      entityId,
+      user.id,
+      `Restored from revision #${revision.revision_number}`,
+    );
+
+    const contentType = await getContentTypeByKey(env.DB, storage.contentType);
+    if (restored && contentType) {
+      await syncContentEntryToContentIndex(env.DB, restored as never, contentType);
+    }
+
+    await writeAuditLog(env.DB, {
+      actorId: user.id,
+      action: "restore",
+      entityType,
+      entityId,
+      metadata: {
+        restored_from_revision: revision.revision_number,
+        restored_from_id: revision.id,
+        new_revision: newRevision.revision_number,
+      },
+      ipAddress: getClientIp(request),
+    });
+
+    return { restored: restored!, revision: newRevision };
+  }
+
+  await env.DB.prepare(`UPDATE ${storage.table} SET ${sets.join(", ")} WHERE id = ?`)
     .bind(...values)
     .run();
 
-  const restored = await env.DB.prepare(`SELECT * FROM ${table} WHERE id = ?`)
+  const restored = await env.DB.prepare(`SELECT * FROM ${storage.table} WHERE id = ?`)
     .bind(entityId)
     .first<Record<string, unknown>>();
 

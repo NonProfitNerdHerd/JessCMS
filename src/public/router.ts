@@ -11,6 +11,7 @@ import {
   searchPublishedContent,
 } from "./queries";
 import { lookupPublishedByRoutePath } from "../content-index/repository";
+import { getPublishedContentEntryById } from "../content-entries/repository";
 import type { ContentIndexRecord } from "../foundation/types";
 import type { PublicView } from "./types";
 import { isReservedPageSlug, normalizeTemplate } from "../theme/seo";
@@ -251,8 +252,24 @@ async function resolveIndexedRecord(
         event,
       };
     }
-    default:
-      return null;
+    default: {
+      if (indexed.source_table !== "content_entries") {
+        return null;
+      }
+      const entry = await getPublishedContentEntryById(
+        env.DB,
+        indexed.content_type,
+        indexed.source_id,
+      );
+      if (!entry) return null;
+      return {
+        kind: "generic-content",
+        template: normalizeTemplate(entry.template),
+        seo: stubSeo(),
+        entry,
+        contentType: indexed.content_type,
+      };
+    }
   }
 }
 

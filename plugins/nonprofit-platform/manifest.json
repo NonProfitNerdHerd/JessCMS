@@ -107,15 +107,6 @@
       "icon": "💝"
     }
   ],
-  "navigation": {
-    "sections": [
-      { "id": "nonprofit", "label": "Nonprofit", "sort_order": 16 }
-    ],
-    "items": [
-      { "section_id": "nonprofit", "label": "Programs", "href": "/admin/programs", "icon": "📚", "sort_order": 10, "permission": "nonprofit.program.read" },
-      { "section_id": "nonprofit", "label": "Campaigns", "href": "/admin/campaigns", "icon": "📣", "sort_order": 20, "permission": "nonprofit.campaign.read" }
-    ]
-  },
   "settings_pages": [
     {
       "slug": "nonprofit",

@@ -1,4 +1,3 @@
-import type { MediaRecord } from "../media/repository";
 
 export interface MediaItem {
   id: string;
@@ -18,10 +17,25 @@ export interface MediaProvider {
   }): Promise<{ url: string | null; alt: string | null }>;
 }
 
-function toMediaItem(row: MediaRecord): MediaItem {
+function toMediaItem(row: {
+  id: string;
+  public_url: string | null;
+  alt_text: string | null;
+  mime_type: string;
+  title: string | null;
+  caption: string | null;
+  storage_provider?: string | null;
+  storage_key?: string | null;
+}): MediaItem {
+  const url =
+    row.public_url ||
+    (row.storage_provider === "r2" && row.storage_key
+      ? `/media/${row.storage_key}`
+      : null);
+
   return {
     id: row.id,
-    url: row.public_url,
+    url,
     alt: row.alt_text,
     mimeType: row.mime_type,
     title: row.title,
@@ -29,7 +43,7 @@ function toMediaItem(row: MediaRecord): MediaItem {
   };
 }
 
-/** URL-based media provider until R2 uploads are implemented. */
+/** Resolves media from D1 (URL and R2-backed items). */
 export class UrlMediaProvider implements MediaProvider {
   constructor(private readonly db: D1Database) {}
 
@@ -39,7 +53,8 @@ export class UrlMediaProvider implements MediaProvider {
     const row = await this.db
       .prepare(
         `
-          SELECT id, public_url, alt_text, mime_type, title, caption
+          SELECT id, public_url, alt_text, mime_type, title, caption,
+                 storage_provider, storage_key
           FROM media_items
           WHERE id = ?
         `,
@@ -52,18 +67,13 @@ export class UrlMediaProvider implements MediaProvider {
         mime_type: string;
         title: string | null;
         caption: string | null;
+        storage_provider: string | null;
+        storage_key: string | null;
       }>();
 
     if (!row) return null;
 
-    return {
-      id: row.id,
-      url: row.public_url,
-      alt: row.alt_text,
-      mimeType: row.mime_type,
-      title: row.title,
-      caption: row.caption,
-    };
+    return toMediaItem(row);
   }
 
   async resolveImageUrl(input: {

@@ -1,4 +1,5 @@
 import type { AuthUser } from "../auth";
+import type { AdminNavSection } from "../runtime/navigation";
 
 function escapeHtml(value: string): string {
   return value
@@ -8,22 +9,26 @@ function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
-const STATIC_NAV_ITEMS = [
-  { href: "/admin/dashboard", label: "Dashboard", icon: "⌂" },
-  { href: "/admin/media", label: "Media", icon: "🖼" },
-  { href: "/admin/settings/theme", label: "Theme", icon: "🎨" },
-  { href: "/admin/plugins", label: "Plugins", icon: "🧩" },
-  { href: "/admin/profile", label: "Profile", icon: "👤" },
-];
+function renderNavSections(sections: AdminNavSection[] = []): string {
+  return sections
+    .map((section) => {
+      const links = section.items
+        .map(
+          (item) =>
+            `<a class="admin-nav-link" href="${escapeHtml(item.href)}"><span class="admin-nav-icon">${item.icon}</span>${escapeHtml(item.label)}</a>`,
+        )
+        .join("");
 
-function buildNavItems(
-  contentTypeNav: Array<{ href: string; label: string; icon: string }> = [],
-): Array<{ href: string; label: string; icon: string }> {
-  return [
-    STATIC_NAV_ITEMS[0],
-    ...contentTypeNav,
-    ...STATIC_NAV_ITEMS.slice(1),
-  ];
+      if (!section.label) {
+        return links;
+      }
+
+      return `<div class="admin-nav-section">
+        <p class="admin-nav-section-label">${escapeHtml(section.label)}</p>
+        ${links}
+      </div>`;
+    })
+    .join("");
 }
 
 export interface AdminPageOptions {
@@ -34,7 +39,7 @@ export interface AdminPageOptions {
   data?: Record<string, string>;
   standalone?: boolean;
   extraScripts?: string[];
-  contentTypeNav?: Array<{ href: string; label: string; icon: string }>;
+  navSections?: AdminNavSection[];
 }
 
 export function renderAdminPage(options: AdminPageOptions): string {
@@ -42,7 +47,8 @@ export function renderAdminPage(options: AdminPageOptions): string {
     .map(([key, value]) => ` data-${key}="${escapeHtml(value)}"`)
     .join("");
 
-  const isContentEdit = options.page === "content-edit";
+  const isContentEdit =
+    options.page === "content-edit" || options.page === "generic-content-edit";
   const needsMediaLibrary = isContentEdit || options.page.startsWith("media");
   const needsFormsBuilder = isContentEdit || options.page.startsWith("forms");
   const blockStyles = isContentEdit
@@ -84,10 +90,7 @@ ${scriptTags}
     ? escapeHtml(options.user.name ?? options.user.email)
     : "Admin";
 
-  const nav = buildNavItems(options.contentTypeNav).map(
-    (item) =>
-      `<a class="admin-nav-link" href="${item.href}"><span class="admin-nav-icon">${item.icon}</span>${item.label}</a>`,
-  ).join("");
+  const nav = renderNavSections(options.navSections);
 
   return `<!DOCTYPE html>
 <html lang="en">

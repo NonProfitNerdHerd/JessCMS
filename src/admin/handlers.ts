@@ -1,5 +1,11 @@
-import { getAdminNavigation, type AdminNavItem } from "../runtime/navigation";
-import { getCurrentUser } from "../auth";
+import { getAdminNavigation, type AdminNavSection } from "../runtime/navigation";
+import { getCurrentUser, userHasPermission } from "../auth";
+import { getContentTypeByKey } from "../content-types/registry";
+import { isGenericContentType } from "../content-entries/registry";
+import {
+  genericEditPageShell,
+  genericListPageShell,
+} from "./generic-content-pages";
 import {
   formsEditShell,
   formsListShell,
@@ -13,7 +19,7 @@ import {
   type AdminPageOptions,
 } from "./layout";
 
-type ContentTypeNav = AdminNavItem[];
+type AdminNavigation = AdminNavSection[];
 
 const PUBLIC_ADMIN_PATHS = new Set(["/admin/login"]);
 
@@ -193,13 +199,13 @@ function renderLoginPage(): string {
 
 function renderDashboard(
   user: Awaited<ReturnType<typeof getCurrentUser>>,
-  contentTypeNav: ContentTypeNav,
+  navSections: AdminNavigation,
 ): string {
   return renderAdminPage({
     title: "Dashboard",
     page: "dashboard",
     user,
-    contentTypeNav,
+    navSections,
     content: `
       <div class="stats-grid" id="dashboard-stats">
         <div class="stat-card"><span class="stat-label">Pages</span><strong class="stat-value" data-stat="pages">…</strong></div>
@@ -221,13 +227,13 @@ function renderDashboard(
 
 function renderThemePage(
   user: Awaited<ReturnType<typeof getCurrentUser>>,
-  contentTypeNav: ContentTypeNav,
+  navSections: AdminNavigation,
 ): string {
   return renderAdminPage({
     title: "Theme Settings",
     page: "theme",
     user,
-    contentTypeNav,
+    navSections,
     content: `
       <div id="theme-error" class="alert alert-error hidden"></div>
       <div id="theme-success" class="alert alert-success hidden"></div>
@@ -254,13 +260,13 @@ function renderThemePage(
 
 function renderProfilePage(
   user: Awaited<ReturnType<typeof getCurrentUser>>,
-  contentTypeNav: ContentTypeNav,
+  navSections: AdminNavigation,
 ): string {
   return renderAdminPage({
     title: "Profile",
     page: "profile",
     user,
-    contentTypeNav,
+    navSections,
     content: `
       <div id="profile-error" class="alert alert-error hidden"></div>
       <div id="profile-success" class="alert alert-success hidden"></div>
@@ -292,10 +298,46 @@ function renderProfilePage(
 }
 
 function mediaFormShell(isNew: boolean): string {
+  const uploadPanel = isNew
+    ? `
+      <div class="media-mode-tabs">
+        <button type="button" class="btn btn-secondary btn-sm media-mode-tab is-active" data-media-mode="upload">Upload file</button>
+        <button type="button" class="btn btn-secondary btn-sm media-mode-tab" data-media-mode="url">External URL</button>
+      </div>
+      <section class="media-upload-panel" data-media-panel="upload">
+        <div class="media-upload-dropzone" id="media-upload-dropzone">
+          <input type="file" id="media-upload-input" accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml,application/pdf" hidden>
+          <p class="media-upload-title">Drag and drop a file here</p>
+          <p class="muted">JPEG, PNG, WebP, GIF, SVG, or PDF up to 10 MB</p>
+          <button type="button" class="btn btn-secondary btn-sm" id="media-upload-browse">Choose file</button>
+          <p class="muted media-upload-name" id="media-upload-name"></p>
+          <div class="media-upload-progress hidden" id="media-upload-progress">
+            <div class="media-upload-progress-bar" id="media-upload-progress-bar"></div>
+          </div>
+        </div>
+        <div class="form-grid">
+          <label class="field"><span>Title</span><input class="input" name="upload_title"></label>
+          <label class="field"><span>Folder</span><input class="input" name="upload_folder" placeholder="e.g. uploads"></label>
+          <label class="field field-wide"><span>Alt text</span><input class="input" name="upload_alt_text"></label>
+          <label class="field field-wide"><span>Caption</span><input class="input" name="upload_caption"></label>
+          <label class="field field-wide"><span>Description</span><textarea class="textarea" name="upload_description" rows="3"></textarea></label>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-primary" id="media-upload-submit">Upload</button>
+          <a class="btn btn-secondary" href="/admin/media">Back to library</a>
+        </div>
+      </section>
+      <section class="media-url-panel hidden" data-media-panel="url">
+    `
+    : "";
+
+  const urlPanelClose = isNew ? `</section>` : "";
+
   return `
     <div id="media-error" class="alert alert-error hidden"></div>
     <div id="media-success" class="alert alert-success hidden"></div>
-    <form id="media-form" class="admin-form">
+    ${uploadPanel}
+    <form id="media-form" class="admin-form ${isNew ? "media-url-form" : ""}">
       <div class="media-edit-layout">
         <div class="media-preview-panel">
           <div class="media-preview-box" id="media-preview">
@@ -304,15 +346,16 @@ function mediaFormShell(isNew: boolean): string {
           <div class="media-url-actions">
             <button type="button" class="btn btn-secondary btn-sm" id="copy-url-btn">Copy URL</button>
           </div>
+          <p class="muted media-storage-label" id="media-storage-label"></p>
         </div>
         <div class="media-fields-panel">
           <div class="form-grid">
-            <label class="field field-wide"><span>Public URL</span><input class="input" name="public_url" required placeholder="https://example.com/image.jpg" ${isNew ? "" : "readonly"}></label>
+            <label class="field field-wide"><span>Public URL</span><input class="input" name="public_url" ${isNew ? "placeholder=\"https://example.com/image.jpg\"" : "readonly"}></label>
             <label class="field"><span>Title</span><input class="input" name="title"></label>
             <label class="field"><span>Filename</span><input class="input" name="filename"></label>
             <label class="field"><span>Folder</span><input class="input" name="folder" placeholder="e.g. uploads"></label>
-            <label class="field"><span>MIME type</span><input class="input" name="mime_type" placeholder="image/jpeg"></label>
-            <label class="field"><span>File size (bytes)</span><input class="input" name="file_size" type="number" min="0"></label>
+            <label class="field"><span>MIME type</span><input class="input" name="mime_type" placeholder="image/jpeg" ${isNew ? "" : "readonly"}></label>
+            <label class="field"><span>File size (bytes)</span><input class="input" name="file_size" type="number" min="0" ${isNew ? "" : "readonly"}></label>
             <label class="field"><span>Width</span><input class="input" name="width" type="number" min="0"></label>
             <label class="field"><span>Height</span><input class="input" name="height" type="number" min="0"></label>
             <label class="field field-wide"><span>Alt text</span><input class="input" name="alt_text"></label>
@@ -320,28 +363,29 @@ function mediaFormShell(isNew: boolean): string {
             <label class="field field-wide"><span>Description</span><textarea class="textarea" name="description" rows="3"></textarea></label>
           </div>
           <div class="form-actions">
-            <button type="submit" class="btn btn-primary">${isNew ? "Add media" : "Save changes"}</button>
+            <button type="submit" class="btn btn-primary">${isNew ? "Add URL media" : "Save changes"}</button>
             ${isNew ? "" : '<button type="button" class="btn btn-danger" id="delete-media-btn">Delete</button>'}
             <a class="btn btn-secondary" href="/admin/media">Back to library</a>
           </div>
         </div>
       </div>
     </form>
+    ${urlPanelClose}
   `;
 }
 
 function renderMediaLibraryPage(
   user: Awaited<ReturnType<typeof getCurrentUser>>,
-  contentTypeNav: ContentTypeNav,
+  navSections: AdminNavigation,
 ): string {
   return renderAdminPage({
     title: "Media Library",
     page: "media-list",
     user,
-    contentTypeNav,
+    navSections,
     content: `
       <div class="admin-toolbar">
-        <a class="btn btn-primary" href="/admin/media/new">Add media URL</a>
+        <a class="btn btn-primary" href="/admin/media/new">Upload / Add media</a>
         <form class="admin-filters" id="media-filter-form">
           <input type="search" name="q" placeholder="Search media" class="input">
           <select name="mime_type" class="select">
@@ -367,13 +411,13 @@ function renderMediaLibraryPage(
 
 function renderPluginsPage(
   user: Awaited<ReturnType<typeof getCurrentUser>>,
-  contentTypeNav: ContentTypeNav,
+  navSections: AdminNavigation,
 ): string {
   return renderAdminPage({
     title: "Plugins",
     page: "plugins",
     user,
-    contentTypeNav,
+    navSections,
     content: `
       <div id="plugins-error" class="alert alert-error hidden"></div>
       <div id="plugins-success" class="alert alert-success hidden"></div>
@@ -441,10 +485,10 @@ export async function handleAdminRequest(
     return redirectResponse("/admin/login");
   }
 
-  const contentTypeNav = await getAdminNavigation(env);
+  const navSections = await getAdminNavigation(env, user);
 
   if (pathname === "/admin/dashboard") {
-    return htmlResponse(renderDashboard(user, contentTypeNav));
+    return htmlResponse(renderDashboard(user, navSections));
   }
 
   if (pathname === "/admin/pages") {
@@ -453,7 +497,7 @@ export async function handleAdminRequest(
         title: "Pages",
         page: "content-list",
         user,
-        contentTypeNav,
+        navSections,
         data: { type: "pages", label: "Page" },
         content: listPageShell("pages", "Page"),
       }),
@@ -466,7 +510,7 @@ export async function handleAdminRequest(
         title: "New Page",
         page: "content-edit",
         user,
-        contentTypeNav,
+        navSections,
         data: { type: "pages", id: "new", label: "Page" },
         content: editPageShell("pages", "Page"),
       }),
@@ -480,7 +524,7 @@ export async function handleAdminRequest(
         title: "Edit Page",
         page: "content-edit",
         user,
-        contentTypeNav,
+        navSections,
         data: { type: "pages", id: pageEdit[1], label: "Page" },
         content: editPageShell("pages", "Page"),
       }),
@@ -493,7 +537,7 @@ export async function handleAdminRequest(
         title: "Posts",
         page: "content-list",
         user,
-        contentTypeNav,
+        navSections,
         data: { type: "posts", label: "Post" },
         content: listPageShell("posts", "Post"),
       }),
@@ -506,7 +550,7 @@ export async function handleAdminRequest(
         title: "New Post",
         page: "content-edit",
         user,
-        contentTypeNav,
+        navSections,
         data: { type: "posts", id: "new", label: "Post" },
         content: editPageShell("posts", "Post"),
       }),
@@ -520,7 +564,7 @@ export async function handleAdminRequest(
         title: "Edit Post",
         page: "content-edit",
         user,
-        contentTypeNav,
+        navSections,
         data: { type: "posts", id: postEdit[1], label: "Post" },
         content: editPageShell("posts", "Post"),
       }),
@@ -533,7 +577,7 @@ export async function handleAdminRequest(
         title: "Events",
         page: "content-list",
         user,
-        contentTypeNav,
+        navSections,
         data: { type: "events", label: "Event" },
         content: listPageShell("events", "Event"),
       }),
@@ -546,7 +590,7 @@ export async function handleAdminRequest(
         title: "New Event",
         page: "content-edit",
         user,
-        contentTypeNav,
+        navSections,
         data: { type: "events", id: "new", label: "Event" },
         content: editPageShell("events", "Event", true),
       }),
@@ -560,7 +604,7 @@ export async function handleAdminRequest(
         title: "Edit Event",
         page: "content-edit",
         user,
-        contentTypeNav,
+        navSections,
         data: { type: "events", id: eventEdit[1], label: "Event" },
         content: editPageShell("events", "Event", true),
       }),
@@ -568,11 +612,11 @@ export async function handleAdminRequest(
   }
 
   if (pathname === "/admin/settings/theme") {
-    return htmlResponse(renderThemePage(user, contentTypeNav));
+    return htmlResponse(renderThemePage(user, navSections));
   }
 
   if (pathname === "/admin/media") {
-    return htmlResponse(renderMediaLibraryPage(user, contentTypeNav));
+    return htmlResponse(renderMediaLibraryPage(user, navSections));
   }
 
   if (pathname === "/admin/forms") {
@@ -581,7 +625,7 @@ export async function handleAdminRequest(
         title: "Forms",
         page: "forms-list",
         user,
-        contentTypeNav,
+        navSections,
         content: formsListShell(),
       }),
     );
@@ -593,7 +637,7 @@ export async function handleAdminRequest(
         title: "New Form",
         page: "forms-new",
         user,
-        contentTypeNav,
+        navSections,
         data: { id: "new" },
         content: formsEditShell(true),
       }),
@@ -607,7 +651,7 @@ export async function handleAdminRequest(
         title: "Form Submissions",
         page: "forms-submissions",
         user,
-        contentTypeNav,
+        navSections,
         data: { formId: formSubmissions[1] },
         content: formsSubmissionsShell(),
       }),
@@ -621,7 +665,7 @@ export async function handleAdminRequest(
         title: "Submission",
         page: "forms-submission-detail",
         user,
-        contentTypeNav,
+        navSections,
         data: { submissionId: submissionDetail[1] },
         content: submissionDetailShell(),
       }),
@@ -635,7 +679,7 @@ export async function handleAdminRequest(
         title: "Edit Form",
         page: "forms-edit",
         user,
-        contentTypeNav,
+        navSections,
         data: { id: formEdit[1] },
         content: formsEditShell(false),
       }),
@@ -648,7 +692,7 @@ export async function handleAdminRequest(
         title: "Add Media",
         page: "media-new",
         user,
-        contentTypeNav,
+        navSections,
         data: { id: "new" },
         content: mediaFormShell(true),
       }),
@@ -662,7 +706,7 @@ export async function handleAdminRequest(
         title: "Edit Media",
         page: "media-edit",
         user,
-        contentTypeNav,
+        navSections,
         data: { id: mediaEdit[1] },
         content: mediaFormShell(false),
       }),
@@ -670,11 +714,88 @@ export async function handleAdminRequest(
   }
 
   if (pathname === "/admin/plugins") {
-    return htmlResponse(renderPluginsPage(user, contentTypeNav));
+    return htmlResponse(renderPluginsPage(user, navSections));
   }
 
   if (pathname === "/admin/profile") {
-    return htmlResponse(renderProfilePage(user, contentTypeNav));
+    return htmlResponse(renderProfilePage(user, navSections));
+  }
+
+  const genericList = pathname.match(/^\/admin\/content\/([^/]+)$/);
+  if (genericList) {
+    const typeKey = genericList[1];
+    if (typeKey === "new") return null;
+    if (!isGenericContentType(typeKey)) {
+      return null;
+    }
+    const contentType = await getContentTypeByKey(env.DB, typeKey);
+    if (!contentType?.enabled) {
+      return null;
+    }
+    return htmlResponse(
+      renderAdminPage({
+        title: contentType.plural_label,
+        page: "generic-content-list",
+        user,
+        navSections,
+        data: { type: `content/${typeKey}`, label: contentType.label, mode: "generic" },
+        content: genericListPageShell(contentType),
+      }),
+    );
+  }
+
+  const genericNew = pathname.match(/^\/admin\/content\/([^/]+)\/new$/);
+  if (genericNew) {
+    const typeKey = genericNew[1];
+    if (!isGenericContentType(typeKey)) {
+      return null;
+    }
+    const contentType = await getContentTypeByKey(env.DB, typeKey);
+    if (!contentType?.enabled) {
+      return null;
+    }
+    return htmlResponse(
+      renderAdminPage({
+        title: `New ${contentType.label}`,
+        page: "generic-content-edit",
+        user,
+        navSections,
+        data: {
+          type: `content/${typeKey}`,
+          id: "new",
+          label: contentType.label,
+          mode: "generic",
+        },
+        content: genericEditPageShell(contentType),
+      }),
+    );
+  }
+
+  const genericEdit = pathname.match(/^\/admin\/content\/([^/]+)\/([^/]+)$/);
+  if (genericEdit && genericEdit[2] !== "new") {
+    const typeKey = genericEdit[1];
+    if (!isGenericContentType(typeKey)) {
+      return null;
+    }
+    const contentType = await getContentTypeByKey(env.DB, typeKey);
+    if (!contentType?.enabled) {
+      return null;
+    }
+    return htmlResponse(
+      renderAdminPage({
+        title: `Edit ${contentType.label}`,
+        page: "generic-content-edit",
+        user,
+        navSections,
+        data: {
+          type: `content/${typeKey}`,
+          id: genericEdit[2],
+          label: contentType.label,
+          mode: "generic",
+        },
+        content: genericEditPageShell(contentType),
+      }),
+    );
   }
 
   return null;

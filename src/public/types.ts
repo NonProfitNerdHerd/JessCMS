@@ -1,4 +1,5 @@
 import type { ContentRecord, EventRecord, PostRecord } from "../content/repository";
+import type { ContentEntryRecord } from "../content-entries/types";
 import type { SearchHit } from "./queries";
 import type { ThemeSettings } from "../theme/settings";
 
@@ -48,6 +49,7 @@ export type PublicViewKind =
   | "post"
   | "events-index"
   | "event"
+  | "generic-content"
   | "category"
   | "tag"
   | "search"
@@ -63,6 +65,8 @@ export interface PublicView {
   posts?: PostRecord[];
   event?: EventRecord;
   events?: EventRecord[];
+  entry?: ContentEntryRecord;
+  contentType?: string;
   category?: { slug: string; name: string; description: string | null };
   tag?: { slug: string; name: string };
   searchQuery?: string;

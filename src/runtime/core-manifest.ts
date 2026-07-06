@@ -64,25 +64,6 @@ export const CORE_MANIFEST: PluginManifest = {
     label: block.label,
     category: block.category,
   })),
-  navigation: {
-    sections: [{ id: "content", label: "Content", sort_order: 10 }],
-    items: [
-      {
-        label: "Theme",
-        href: "/admin/settings/theme",
-        icon: "🎨",
-        sort_order: 200,
-        permission: "settings:read",
-      },
-      {
-        label: "Plugins",
-        href: "/admin/plugins",
-        icon: "🧩",
-        sort_order: 210,
-        permission: "plugins:read",
-      },
-    ],
-  },
   settings_pages: [
     {
       slug: "theme",

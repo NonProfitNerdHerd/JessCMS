@@ -2,7 +2,7 @@
   "id": "storm-chaser-example",
   "name": "Storm Chaser Example",
   "version": "0.1.0",
-  "description": "Example vertical plugin for storm chaser sites: alerts, radar, livestream blocks.",
+  "description": "Example vertical plugin for storm chaser sites: alerts, radar, livestream blocks, and chase content type.",
   "author": "JessCMS",
   "homepage": "https://github.com/ike-j-rebout/JessCMS",
   "minimum_jesscms_version": "0.9.0",
@@ -12,6 +12,72 @@
     { "plugin_id": "storm-platform" }
   ],
   "permissions": ["storm.alerts.read", "storm.radar.read"],
+  "resources": [
+    {
+      "resource_type": "content_type",
+      "resource_name": "chase",
+      "table_name": "content_entries",
+      "ownership_type": "references",
+      "cleanup_policy": "retain"
+    }
+  ],
+  "content_types": [
+    {
+      "type_key": "chase",
+      "label": "Chase",
+      "plural_label": "Chases",
+      "description": "Storm chase log entries for the example plugin",
+      "route_base": "/chases",
+      "admin_base": "/admin/content/chase",
+      "icon": "🌪",
+      "supports_revisions": true,
+      "supports_workflow": true,
+      "supports_seo": true,
+      "supports_featured_image": true,
+      "supports_public_routes": true,
+      "schema_json": {
+        "fields": [
+          {
+            "key": "target_area",
+            "label": "Target Area",
+            "type": "text",
+            "required": true
+          },
+          {
+            "key": "start_time",
+            "label": "Start Time",
+            "type": "datetime",
+            "required": false
+          },
+          {
+            "key": "end_time",
+            "label": "End Time",
+            "type": "datetime",
+            "required": false
+          },
+          {
+            "key": "summary",
+            "label": "Summary",
+            "type": "textarea",
+            "required": false
+          },
+          {
+            "key": "risk_level",
+            "label": "Risk Level",
+            "type": "select",
+            "options": ["Low", "Moderate", "High", "Extreme"],
+            "required": false
+          },
+          {
+            "key": "primary_state",
+            "label": "Primary State",
+            "type": "text",
+            "required": false
+          }
+        ]
+      }
+    }
+  ],
   "admin_pages": [
     { "path": "/alerts", "label": "Weather Alerts", "icon": "⚠", "sort_order": 110, "permission": "storm.alerts.read" },
     { "path": "/radar", "label": "Radar", "icon": "🌩", "sort_order": 120, "permission": "storm.radar.read" }

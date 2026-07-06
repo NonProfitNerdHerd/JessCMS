@@ -314,7 +314,7 @@
           mimeType: "image/*",
           onSelect: (item) => {
             const block = this.doc.blocks[index];
-            block.props.url = item.public_url || item.resolved_url || "";
+            block.props.url = item.resolved_url || item.public_url || "";
             block.props.alt = item.alt_text || item.title || "";
             if (item.caption && !block.props.caption) {
               block.props.caption = item.caption;

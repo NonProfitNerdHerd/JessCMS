@@ -29,6 +29,7 @@ Admin and API routes are handled before the public layer. Static files with file
 | `/category/:slug` | `category` | Posts in category |
 | `/tag/:slug` | `tag` | Posts with tag |
 | `/search?q=` | `search` | Full-text search across pages, posts, events |
+| `{route_base}/{slug}` | `generic-content` | Published generic entry via `content_index` |
 | unmatched | `not-found` | 404 page |
 
 ## Reserved slugs
@@ -70,6 +71,28 @@ registerPublicRoute({
 ```
 
 Return `null` from the handler to fall through to default routing.
+
+## Generic content routes (Phase 10)
+
+Plugin content types with `supports_public_routes` and a `route_base` are indexed in `content_index` with `source_table = content_entries`.
+
+Resolution order (after hardcoded blog/events routes):
+
+1. `lookupPublishedByRoutePath(pathname)` on `content_index`
+2. If `source_table` is `content_entries`, load the row and render `generic-content` view
+3. Legacy page slug fallback for top-level slugs
+
+Example: a `chase` type with `route_base: /chases` and slug `may-15` is served at `/chases/may-15`.
+
+Rendering:
+
+- Layout from theme (`renderByTemplate`)
+- Title + excerpt header
+- Optional metadata `<dl>` from `metadata_json`
+- Block content from `content_html` / `content_json`
+- SEO from `seo_title`, `seo_description`
+
+See [Generic content types](generic-content-types.md).
 
 ## SEO endpoints
 

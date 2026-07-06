@@ -19,6 +19,8 @@ export interface MediaRecord {
   public_url: string | null;
   folder: string | null;
   uploaded_by: string | null;
+  checksum: string | null;
+  metadata_json: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -78,7 +80,7 @@ export class NotFoundError extends Error {
 const MEDIA_COLUMNS = `
   id, filename, original_filename, title, alt_text, caption, description,
   mime_type, file_size, width, height, storage_provider, storage_key,
-  public_url, folder, uploaded_by, created_at, updated_at
+  public_url, folder, uploaded_by, checksum, metadata_json, created_at, updated_at
 `;
 
 function filenameFromUrl(url: string): string {
@@ -206,6 +208,103 @@ export async function listMediaFolders(db: D1Database): Promise<string[]> {
   return (result.results ?? []).map((row) => row.folder);
 }
 
+export async function getMediaByStorageKey(
+  db: D1Database,
+  storageKey: string,
+): Promise<MediaRecord | null> {
+  return db
+    .prepare(`SELECT ${MEDIA_COLUMNS} FROM media_items WHERE storage_key = ?`)
+    .bind(storageKey)
+    .first<MediaRecord>();
+}
+
+export async function countMediaReferences(
+  db: D1Database,
+  mediaId: string,
+): Promise<number> {
+  const tables = ["pages", "posts", "events", "content_entries"] as const;
+  let total = 0;
+
+  for (const table of tables) {
+    const row = await db
+      .prepare(`SELECT COUNT(*) AS count FROM ${table} WHERE featured_image_id = ?`)
+      .bind(mediaId)
+      .first<{ count: number }>();
+    total += row?.count ?? 0;
+  }
+
+  const needle = `"media_id":"${mediaId}"`;
+  const jsonRows = await db
+    .prepare(
+      `
+        SELECT COUNT(*) AS count FROM (
+          SELECT id FROM pages WHERE INSTR(content_json, ?) > 0
+          UNION ALL
+          SELECT id FROM posts WHERE INSTR(content_json, ?) > 0
+          UNION ALL
+          SELECT id FROM events WHERE INSTR(content_json, ?) > 0
+          UNION ALL
+          SELECT id FROM content_entries WHERE INSTR(content_json, ?) > 0
+        )
+      `,
+    )
+    .bind(needle, needle, needle, needle)
+    .first<{ count: number }>();
+
+  return total + (jsonRows?.count ?? 0);
+}
+
+export async function createUploadedMedia(
+  db: D1Database,
+  record: Omit<MediaRecord, "created_at" | "updated_at">,
+): Promise<MediaRecord> {
+  const now = new Date().toISOString();
+
+  await db
+    .prepare(
+      `
+        INSERT INTO media_items (
+          id, filename, original_filename, title, alt_text, caption, description,
+          mime_type, file_size, width, height, storage_provider, storage_key,
+          public_url, folder, uploaded_by, checksum, metadata_json,
+          created_at, updated_at, url, size_bytes
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `,
+    )
+    .bind(
+      record.id,
+      record.filename,
+      record.original_filename,
+      record.title,
+      record.alt_text,
+      record.caption,
+      record.description,
+      record.mime_type,
+      record.file_size,
+      record.width,
+      record.height,
+      record.storage_provider,
+      record.storage_key,
+      record.public_url,
+      record.folder,
+      record.uploaded_by,
+      record.checksum,
+      record.metadata_json,
+      now,
+      now,
+      record.public_url,
+      record.file_size ?? 0,
+    )
+    .run();
+
+  const created = await getMediaById(db, record.id);
+  if (!created) {
+    throw new Error("Failed to create uploaded media item");
+  }
+
+  return created;
+}
+
 export async function getMediaById(
   db: D1Database,
   id: string,
@@ -307,10 +406,13 @@ export async function updateMedia(
   };
 
   if (updated.public_url) {
-    try {
-      new URL(updated.public_url);
-    } catch {
-      throw new ValidationError({ public_url: "Public URL must be a valid URL" });
+    const isPath = updated.public_url.startsWith("/");
+    if (!isPath) {
+      try {
+        new URL(updated.public_url);
+      } catch {
+        throw new ValidationError({ public_url: "Public URL must be a valid URL or path" });
+      }
     }
   }
 

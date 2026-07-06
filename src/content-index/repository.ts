@@ -137,7 +137,7 @@ export async function lookupPublishedByRoutePath(
         FROM content_index
         WHERE route_path = ?
           AND status = 'published'
-          AND (published_at IS NULL OR published_at <= datetime('now'))
+          AND (published_at IS NULL OR datetime(published_at) <= datetime('now'))
       `,
     )
     .bind(normalized)
@@ -276,6 +276,64 @@ export async function syncEventToContentIndex(
       event.excerpt,
       event.content_html,
     ]),
+  });
+}
+
+export async function syncContentEntryToContentIndex(
+  db: D1Database,
+  entry: {
+    id: string;
+    content_type: string;
+    slug: string;
+    title: string;
+    status: string;
+    author_id?: string | null;
+    published_at?: string | null;
+    updated_at?: string | null;
+    excerpt?: string | null;
+    content_html?: string | null;
+    metadata_json?: string | null;
+    plugin_id?: string | null;
+  },
+  contentType?: { route_base?: string | null; supports_public_routes?: boolean } | null,
+): Promise<void> {
+  const routePath =
+    contentType?.supports_public_routes === false
+      ? null
+      : resolveRoutePath(
+          entry.content_type,
+          entry.slug,
+          contentType?.route_base,
+        );
+
+  let metadata: Record<string, unknown> | null = null;
+  if (entry.metadata_json) {
+    try {
+      metadata = JSON.parse(entry.metadata_json) as Record<string, unknown>;
+    } catch {
+      metadata = null;
+    }
+  }
+
+  await upsertContentIndexEntry(db, {
+    content_type: entry.content_type,
+    source_table: "content_entries",
+    source_id: entry.id,
+    slug: entry.slug,
+    title: entry.title,
+    status: entry.status,
+    author_id: entry.author_id,
+    published_at: entry.published_at,
+    updated_at: entry.updated_at,
+    plugin_id: entry.plugin_id,
+    route_path: routePath,
+    searchable_text: buildSearchableText([
+      entry.title,
+      entry.excerpt,
+      entry.content_html,
+      metadata ? JSON.stringify(metadata) : null,
+    ]),
+    metadata_json: metadata,
   });
 }
 

@@ -90,6 +90,15 @@ export function seoForView(
         description: view.event?.seo_description || view.event?.excerpt,
         ogType: "website",
       });
+    case "generic-content":
+      return buildSeoMeta({
+        settings,
+        origin,
+        pathname,
+        title: view.entry?.seo_title || view.entry?.title || settings.site_name,
+        description: view.entry?.seo_description || view.entry?.excerpt,
+        ogType: "website",
+      });
     case "blog-index":
       return buildSeoMeta({
         settings,

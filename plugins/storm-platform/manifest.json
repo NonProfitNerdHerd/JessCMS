@@ -24,25 +24,6 @@
   ],
   "content_types": [
     {
-      "type_key": "chase",
-      "label": "Chase",
-      "plural_label": "Chases",
-      "description": "Active or historical storm chase log",
-      "source": "plugin",
-      "enabled": true,
-      "supports_json": true,
-      "supports_html": true,
-      "supports_revisions": true,
-      "supports_workflow": true,
-      "supports_seo": true,
-      "supports_featured_image": true,
-      "supports_author": true,
-      "supports_public_routes": true,
-      "route_base": "/chases",
-      "admin_base": "/admin/chases",
-      "icon": "🌪"
-    },
-    {
       "type_key": "vehicle",
       "label": "Vehicle",
       "plural_label": "Vehicles",
@@ -112,15 +93,6 @@
       "icon": "📻"
     }
   ],
-  "navigation": {
-    "sections": [
-      { "id": "storm", "label": "Storm", "sort_order": 15 }
-    ],
-    "items": [
-      { "section_id": "storm", "label": "Chases", "href": "/admin/chases", "icon": "🌪", "sort_order": 10, "permission": "storm.chase.read" },
-      { "section_id": "storm", "label": "Warnings", "href": "/admin/warnings", "icon": "⚠", "sort_order": 20, "permission": "storm.warning.read" }
-    ]
-  },
   "settings_pages": [
     {
       "slug": "storm",
