@@ -35,6 +35,10 @@ export function notFound(message = "Not found"): Response {
   return json({ error: message }, 404);
 }
 
+export function conflict(message: string): Response {
+  return json({ error: message }, 409);
+}
+
 export function serverError(message = "Internal server error"): Response {
   return json({ error: message }, 500);
 }

@@ -172,6 +172,41 @@ function renderThemePage(user: Awaited<ReturnType<typeof getCurrentUser>>): stri
   });
 }
 
+function renderProfilePage(user: Awaited<ReturnType<typeof getCurrentUser>>): string {
+  return renderAdminPage({
+    title: "Profile",
+    page: "profile",
+    user,
+    content: `
+      <div id="profile-error" class="alert alert-error hidden"></div>
+      <div id="profile-success" class="alert alert-success hidden"></div>
+      <form id="profile-form" class="admin-form">
+        <section class="profile-section">
+          <h2 class="profile-section-title">Account</h2>
+          <div class="form-grid">
+            <label class="field"><span>Name</span><input class="input" name="name" required autocomplete="name"></label>
+            <label class="field"><span>Email</span><input class="input" type="email" name="email" required autocomplete="email"></label>
+          </div>
+        </section>
+        <section class="profile-section">
+          <h2 class="profile-section-title">Change password</h2>
+          <p class="muted profile-hint">Leave blank to keep your current password.</p>
+          <div class="form-grid">
+            <label class="field"><span>New password</span><input class="input" type="password" name="new_password" autocomplete="new-password" minlength="12"></label>
+            <label class="field"><span>Confirm new password</span><input class="input" type="password" name="confirm_password" autocomplete="new-password" minlength="12"></label>
+          </div>
+        </section>
+        <section class="profile-section">
+          <h2 class="profile-section-title">Confirm changes</h2>
+          <p class="muted profile-hint">Enter your current password to save any changes.</p>
+          <label class="field field-wide"><span>Current password</span><input class="input" type="password" name="current_password" required autocomplete="current-password"></label>
+        </section>
+        <button type="submit" class="btn btn-primary">Save profile</button>
+      </form>
+    `,
+  });
+}
+
 function renderPluginsPage(user: Awaited<ReturnType<typeof getCurrentUser>>): string {
   return renderAdminPage({
     title: "Plugins",
@@ -352,6 +387,10 @@ export async function handleAdminRequest(
 
   if (pathname === "/admin/plugins") {
     return htmlResponse(renderPluginsPage(user));
+  }
+
+  if (pathname === "/admin/profile") {
+    return htmlResponse(renderProfilePage(user));
   }
 
   return null;

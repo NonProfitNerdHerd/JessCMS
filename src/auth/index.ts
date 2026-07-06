@@ -139,6 +139,16 @@ export async function findUserByEmail(
     .first<UserRow & { password_hash: string }>();
 }
 
+export async function findUserById(
+  db: D1Database,
+  userId: string,
+): Promise<(UserRow & { password_hash: string }) | null> {
+  return db
+    .prepare("SELECT id, email, name, password_hash FROM users WHERE id = ?")
+    .bind(userId)
+    .first<UserRow & { password_hash: string }>();
+}
+
 export async function createSession(
   db: D1Database,
   userId: string,

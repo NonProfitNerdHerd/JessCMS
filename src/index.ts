@@ -1,6 +1,6 @@
 import { handleAdminRequest } from "./admin/handlers";
 import { matchRoute, paramRoute, staticRoute, type RouteDefinition } from "./router";
-import { handleLogin, handleLogout, handleMe } from "./routes/auth";
+import { handleLogin, handleLogout, handleMe, handleUpdateProfile } from "./routes/auth";
 import {
   handleCreateEvent,
   handleCreatePage,
@@ -37,6 +37,7 @@ const ROUTES: RouteDefinition[] = [
   staticRoute("POST", "/api/auth/login", handleLogin),
   staticRoute("POST", "/api/auth/logout", handleLogout),
   staticRoute("GET", "/api/auth/me", handleMe),
+  staticRoute("PUT", "/api/auth/profile", handleUpdateProfile),
 
   staticRoute("GET", "/api/pages", handleListPages),
   paramRoute("GET", "/api/pages/slug/:slug", handleGetPageBySlug),

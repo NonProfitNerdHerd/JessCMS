@@ -15,6 +15,7 @@ const NAV_ITEMS = [
   { href: "/admin/events", label: "Events", icon: "📅" },
   { href: "/admin/settings/theme", label: "Theme", icon: "🎨" },
   { href: "/admin/plugins", label: "Plugins", icon: "🧩" },
+  { href: "/admin/profile", label: "Profile", icon: "👤" },
 ];
 
 export interface AdminPageOptions {
@@ -74,7 +75,7 @@ export function renderAdminPage(options: AdminPageOptions): string {
       <header class="admin-header">
         <div>
           <h1 class="admin-page-title">${escapeHtml(options.title)}</h1>
-          <p class="admin-user-label">Signed in as ${userLabel}</p>
+          <p class="admin-user-label">Signed in as <a class="admin-user-link" href="/admin/profile">${userLabel}</a></p>
         </div>
         <div class="admin-header-actions">
           <button type="button" class="btn btn-secondary" id="logout-btn">Logout</button>

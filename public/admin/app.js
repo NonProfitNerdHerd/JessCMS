@@ -32,6 +32,17 @@ function hideError(element) {
   element.classList.add("hidden");
 }
 
+function showSuccess(element, message) {
+  if (!element) return;
+  element.textContent = message;
+  element.classList.remove("hidden");
+}
+
+function hideSuccess(element) {
+  if (!element) return;
+  element.classList.add("hidden");
+}
+
 function formatDate(value) {
   if (!value) return "—";
   const date = new Date(value);
@@ -360,6 +371,80 @@ async function initThemePage() {
   });
 }
 
+async function initProfilePage() {
+  document.getElementById("logout-btn")?.addEventListener("click", logout);
+
+  const form = document.getElementById("profile-form");
+  const errorEl = document.getElementById("profile-error");
+  const successEl = document.getElementById("profile-success");
+
+  try {
+    const profile = await api("/api/auth/me");
+    if (form?.elements.namedItem("name") instanceof HTMLInputElement) {
+      form.elements.namedItem("name").value = profile.name ?? "";
+    }
+    if (form?.elements.namedItem("email") instanceof HTMLInputElement) {
+      form.elements.namedItem("email").value = profile.email ?? "";
+    }
+  } catch (error) {
+    showError(errorEl, error.message);
+  }
+
+  form?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    hideError(errorEl);
+    hideSuccess(successEl);
+
+    const data = new FormData(form);
+    const newPassword = String(data.get("new_password") || "");
+    const confirmPassword = String(data.get("confirm_password") || "");
+
+    if (newPassword && newPassword !== confirmPassword) {
+      showError(errorEl, "New passwords do not match");
+      return;
+    }
+
+    if (newPassword && newPassword.length < 12) {
+      showError(errorEl, "New password must be at least 12 characters");
+      return;
+    }
+
+    const payload = {
+      name: String(data.get("name") || "").trim(),
+      email: String(data.get("email") || "").trim(),
+      current_password: String(data.get("current_password") || ""),
+    };
+
+    if (newPassword) {
+      payload.new_password = newPassword;
+    }
+
+    try {
+      const updated = await api("/api/auth/profile", {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      });
+
+      form.elements.namedItem("current_password").value = "";
+      form.elements.namedItem("new_password").value = "";
+      form.elements.namedItem("confirm_password").value = "";
+
+      const changed = [];
+      if (updated.updated?.name) changed.push("name");
+      if (updated.updated?.email) changed.push("email");
+      if (updated.updated?.password) changed.push("password");
+
+      const message =
+        changed.length > 0
+          ? `Profile updated (${changed.join(", ")}).`
+          : "Profile saved.";
+      showSuccess(successEl, message);
+    } catch (error) {
+      showError(errorEl, error.message);
+    }
+  });
+}
+
 async function initPluginsPage() {
   document.getElementById("logout-btn")?.addEventListener("click", logout);
 
@@ -430,6 +515,9 @@ document.addEventListener("DOMContentLoaded", () => {
       break;
     case "plugins":
       initPluginsPage();
+      break;
+    case "profile":
+      initProfilePage();
       break;
     default:
       document.getElementById("logout-btn")?.addEventListener("click", logout);

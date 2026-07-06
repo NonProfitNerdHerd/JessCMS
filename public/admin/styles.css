@@ -83,6 +83,35 @@ body.admin-body {
   font-size: 0.875rem;
 }
 
+.admin-user-link {
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.admin-user-link:hover {
+  text-decoration: underline;
+}
+
+.profile-section {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.profile-section:last-of-type {
+  border-bottom: none;
+  margin-bottom: 1rem;
+}
+
+.profile-section-title {
+  margin: 0 0 0.75rem;
+  font-size: 1.125rem;
+}
+
+.profile-hint {
+  margin: 0 0 0.75rem;
+}
+
 .admin-content {
   padding: 1.5rem;
 }
