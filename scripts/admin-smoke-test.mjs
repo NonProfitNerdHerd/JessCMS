@@ -65,7 +65,7 @@ assert("create page via API", page.status === 201);
 
 const pageId = page.body.data?.id;
 const editPage = await req(`/admin/pages/${pageId}`);
-assert("edit page loads", editPage.status === 200 && String(editPage.body).includes("content-form"));
+assert("edit page loads", editPage.status === 200 && String(editPage.body).includes("block-editor"));
 
 const publish = await req(`/api/pages/${pageId}`, {
   method: "PUT",

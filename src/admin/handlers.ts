@@ -89,8 +89,33 @@ function editPageShell(type: string, label: string, isEvent = false): string {
         <label class="field field-wide"><span>SEO description</span><textarea class="textarea" name="seo_description" rows="2"></textarea></label>
       </div>
       ${eventFields}
-      <label class="field field-wide"><span>Content JSON</span><textarea class="textarea code" name="content_json" rows="8" placeholder='{"version":1,"blocks":[]}'></textarea></label>
-      <label class="field field-wide"><span>Content HTML</span><textarea class="textarea code" name="content_html" rows="8"></textarea></label>
+      <section class="field field-wide block-editor-section">
+        <span class="field-label">Content</span>
+        <div id="block-editor" class="block-editor-root">
+          <div class="block-editor-toolbar">
+            <div class="block-add-wrap">
+              <button type="button" class="btn btn-secondary" data-block-add-btn>+ Add block</button>
+              <div class="block-add-menu hidden" data-block-add-menu>
+                <button type="button" data-add-type="paragraph">Paragraph</button>
+                <button type="button" data-add-type="heading">Heading</button>
+                <button type="button" data-add-type="image">Image</button>
+                <button type="button" data-add-type="button">Button</button>
+                <button type="button" data-add-type="quote">Quote</button>
+                <button type="button" data-add-type="list">List</button>
+                <button type="button" data-add-type="spacer">Spacer</button>
+                <button type="button" data-add-type="html">Custom HTML</button>
+              </div>
+            </div>
+          </div>
+          <div class="block-editor-list" data-block-list></div>
+        </div>
+      </section>
+      <details class="block-editor-advanced field-wide">
+        <summary>Advanced / Raw JSON</summary>
+        <label class="field"><span>Content JSON</span><textarea class="textarea code" name="content_json" id="content-json-raw" rows="8" placeholder='{"version":1,"blocks":[]}'></textarea></label>
+        <label class="field"><span>Generated HTML (read-only)</span><textarea class="textarea code" name="content_html" id="content-html-raw" rows="6" readonly></textarea></label>
+        <button type="button" class="btn btn-secondary btn-sm" id="apply-raw-json-btn">Apply raw JSON to editor</button>
+      </details>
       <div class="form-actions">
         <button type="button" class="btn btn-secondary" data-action="draft">Save draft</button>
         <button type="button" class="btn btn-primary" data-action="publish">Publish</button>

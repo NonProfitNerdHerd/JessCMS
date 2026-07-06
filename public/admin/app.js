@@ -257,6 +257,26 @@ async function initContentEdit() {
   const errorEl = document.getElementById("form-error");
   const titleField = form?.elements.namedItem("title");
   const slugField = form?.elements.namedItem("slug");
+  const jsonField = form?.elements.namedItem("content_json");
+  const htmlField = form?.elements.namedItem("content_html");
+  const editorRoot = document.getElementById("block-editor");
+
+  let blockEditor = null;
+  if (editorRoot && window.JessBlockEditor && window.JessBlockRender) {
+    blockEditor = new window.JessBlockEditor.BlockEditor(editorRoot, {
+      jsonField: jsonField instanceof HTMLTextAreaElement ? jsonField : null,
+      htmlField: htmlField instanceof HTMLTextAreaElement ? htmlField : null,
+    });
+    blockEditor.loadFromContent("", "");
+  }
+
+  document.getElementById("apply-raw-json-btn")?.addEventListener("click", () => {
+    if (!blockEditor?.applyRawJson()) {
+      showError(errorEl, "Raw JSON could not be parsed.");
+      return;
+    }
+    hideError(errorEl);
+  });
 
   if (titleField instanceof HTMLInputElement && slugField instanceof HTMLInputElement && id === "new") {
     titleField.addEventListener("blur", () => {
@@ -264,10 +284,17 @@ async function initContentEdit() {
     });
   }
 
+  const loadItemIntoForm = (item) => {
+    fillContentForm(form, item);
+    if (blockEditor) {
+      blockEditor.loadFromContent(item.content_json ?? "", item.content_html ?? "");
+    }
+  };
+
   if (id !== "new") {
     try {
       const item = await api(`/api/${type}/${id}`);
-      fillContentForm(form, item);
+      loadItemIntoForm(item);
     } catch (error) {
       showError(errorEl, error.message);
     }
@@ -283,6 +310,13 @@ async function initContentEdit() {
     hideError(errorEl);
 
     const payload = readContentForm(form);
+
+    if (blockEditor) {
+      payload.content_json = blockEditor.getContentJson();
+      payload.content_html = blockEditor.getContentHtml();
+      if (jsonField instanceof HTMLTextAreaElement) jsonField.value = payload.content_json;
+      if (htmlField instanceof HTMLTextAreaElement) htmlField.value = payload.content_html;
+    }
 
     try {
       if (action === "delete") {

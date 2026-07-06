@@ -25,12 +25,28 @@ export interface AdminPageOptions {
   content: string;
   data?: Record<string, string>;
   standalone?: boolean;
+  extraScripts?: string[];
 }
 
 export function renderAdminPage(options: AdminPageOptions): string {
   const dataAttrs = Object.entries(options.data ?? {})
     .map(([key, value]) => ` data-${key}="${escapeHtml(value)}"`)
     .join("");
+
+  const isContentEdit = options.page === "content-edit";
+  const blockStyles = isContentEdit
+    ? '  <link rel="stylesheet" href="/blocks.css">\n'
+    : "";
+  const scriptSources = isContentEdit
+    ? ["/admin/block-render.js", "/admin/block-editor.js", ...(options.extraScripts ?? [])]
+    : [...(options.extraScripts ?? [])];
+
+  const extraScripts = scriptSources
+    .map((src) => `  <script src="${src}" defer></script>`)
+    .join("\n");
+
+  const scriptTags = `${extraScripts}
+  <script src="/admin/app.js" defer></script>`;
 
   if (options.standalone) {
     return `<!DOCTYPE html>
@@ -40,10 +56,10 @@ export function renderAdminPage(options: AdminPageOptions): string {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${escapeHtml(options.title)} · JessCMS</title>
   <link rel="stylesheet" href="/admin/styles.css">
-</head>
+${blockStyles}</head>
 <body class="admin-body admin-standalone" data-page="${escapeHtml(options.page)}"${dataAttrs}>
   ${options.content}
-  <script src="/admin/app.js" defer></script>
+${scriptTags}
 </body>
 </html>`;
   }
@@ -64,7 +80,7 @@ export function renderAdminPage(options: AdminPageOptions): string {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${escapeHtml(options.title)} · JessCMS Admin</title>
   <link rel="stylesheet" href="/admin/styles.css">
-</head>
+${blockStyles}</head>
 <body class="admin-body" data-page="${escapeHtml(options.page)}"${dataAttrs}>
   <div class="admin-shell">
     <aside class="admin-sidebar">
@@ -86,7 +102,7 @@ export function renderAdminPage(options: AdminPageOptions): string {
       </main>
     </div>
   </div>
-  <script src="/admin/app.js" defer></script>
+${scriptTags}
 </body>
 </html>`;
 }
