@@ -4,7 +4,10 @@ export type AuditAction =
   | "create"
   | "update"
   | "publish"
-  | "delete";
+  | "delete"
+  | "approve"
+  | "reject"
+  | "restore";
 
 export async function writeAuditLog(
   db: D1Database,

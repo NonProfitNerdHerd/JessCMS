@@ -85,3 +85,61 @@
   display: block;
   width: 100%;
 }
+
+.jess-form-embed-inner {
+  display: grid;
+  gap: 1rem;
+  max-width: 40rem;
+}
+
+.jess-form-field {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.jess-form-field > span,
+.jess-form-field legend {
+  font-weight: 600;
+}
+
+.jess-input {
+  width: 100%;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.375rem;
+  font: inherit;
+}
+
+.jess-form-honeypot {
+  position: absolute;
+  left: -9999px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.jess-form-style-card {
+  padding: 1.25rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background: #fff;
+}
+
+.jess-form-message {
+  padding: 0.75rem 1rem;
+  border-radius: 0.375rem;
+}
+
+.jess-form-success {
+  background: #ecfdf5;
+  color: #065f46;
+}
+
+.jess-form-error {
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.jess-form-empty,
+.jess-form-loading {
+  color: #64748b;
+}

@@ -29,8 +29,55 @@ import {
   handleThemeSettings,
   handleUpdateThemeSettings,
 } from "./routes/theme-settings";
+import {
+  handleCreateMedia,
+  handleDeleteMedia,
+  handleGetMediaById,
+  handleListMedia,
+  handleUpdateMedia,
+} from "./routes/media";
+import { registerFormsBuilderPlugin } from "./plugins/forms-builder";
+import {
+  handleCreateForm,
+  handleCreateFormField,
+  handleDeleteForm,
+  handleDeleteFormField,
+  handleDeleteSubmission,
+  handleGetForm,
+  handleGetSubmission,
+  handleListFormSubmissions,
+  handleListForms,
+  handlePublicGetForm,
+  handlePublicSubmitForm,
+  handleReorderFormFields,
+  handleUpdateForm,
+  handleUpdateFormField,
+  handleUpdateSubmission,
+} from "./plugins/forms-builder/routes";
+import {
+  handleCompareEventRevisions,
+  handleComparePageRevisions,
+  handleComparePostRevisions,
+  handleGetEventRevision,
+  handleGetEventWorkflow,
+  handleGetPageRevision,
+  handleGetPageWorkflow,
+  handleGetPostRevision,
+  handleGetPostWorkflow,
+  handleListEventRevisions,
+  handleListPageRevisions,
+  handleListPostRevisions,
+  handleRestoreEventRevision,
+  handleRestorePageRevision,
+  handleRestorePostRevision,
+  handleUpdateEventWorkflow,
+  handleUpdatePageWorkflow,
+  handleUpdatePostWorkflow,
+} from "./routes/workflow-revisions";
 import { handlePublicRequest } from "./public/handler";
 import { serverError } from "./lib/response";
+
+registerFormsBuilderPlugin();
 
 const ROUTES: RouteDefinition[] = [
   staticRoute("GET", "/api/health", (_request, env) => handleHealth(env)),
@@ -41,6 +88,12 @@ const ROUTES: RouteDefinition[] = [
   staticRoute("PUT", "/api/auth/profile", handleUpdateProfile),
 
   staticRoute("GET", "/api/pages", handleListPages),
+  paramRoute("GET", "/api/pages/:id/revisions/compare", handleComparePageRevisions),
+  paramRoute("POST", "/api/pages/:id/revisions/:revisionId/restore", handleRestorePageRevision),
+  paramRoute("GET", "/api/pages/:id/revisions/:revisionId", handleGetPageRevision),
+  paramRoute("GET", "/api/pages/:id/revisions", handleListPageRevisions),
+  paramRoute("GET", "/api/pages/:id/workflow", handleGetPageWorkflow),
+  paramRoute("PUT", "/api/pages/:id/workflow", handleUpdatePageWorkflow),
   paramRoute("GET", "/api/pages/slug/:slug", handleGetPageBySlug),
   paramRoute("GET", "/api/pages/:id", handleGetPageById),
   staticRoute("POST", "/api/pages", handleCreatePage),
@@ -48,6 +101,12 @@ const ROUTES: RouteDefinition[] = [
   paramRoute("DELETE", "/api/pages/:id", handleDeletePage),
 
   staticRoute("GET", "/api/posts", handleListPosts),
+  paramRoute("GET", "/api/posts/:id/revisions/compare", handleComparePostRevisions),
+  paramRoute("POST", "/api/posts/:id/revisions/:revisionId/restore", handleRestorePostRevision),
+  paramRoute("GET", "/api/posts/:id/revisions/:revisionId", handleGetPostRevision),
+  paramRoute("GET", "/api/posts/:id/revisions", handleListPostRevisions),
+  paramRoute("GET", "/api/posts/:id/workflow", handleGetPostWorkflow),
+  paramRoute("PUT", "/api/posts/:id/workflow", handleUpdatePostWorkflow),
   paramRoute("GET", "/api/posts/slug/:slug", handleGetPostBySlug),
   paramRoute("GET", "/api/posts/:id", handleGetPostById),
   staticRoute("POST", "/api/posts", handleCreatePost),
@@ -55,6 +114,12 @@ const ROUTES: RouteDefinition[] = [
   paramRoute("DELETE", "/api/posts/:id", handleDeletePost),
 
   staticRoute("GET", "/api/events", handleListEvents),
+  paramRoute("GET", "/api/events/:id/revisions/compare", handleCompareEventRevisions),
+  paramRoute("POST", "/api/events/:id/revisions/:revisionId/restore", handleRestoreEventRevision),
+  paramRoute("GET", "/api/events/:id/revisions/:revisionId", handleGetEventRevision),
+  paramRoute("GET", "/api/events/:id/revisions", handleListEventRevisions),
+  paramRoute("GET", "/api/events/:id/workflow", handleGetEventWorkflow),
+  paramRoute("PUT", "/api/events/:id/workflow", handleUpdateEventWorkflow),
   paramRoute("GET", "/api/events/slug/:slug", handleGetEventBySlug),
   paramRoute("GET", "/api/events/:id", handleGetEventById),
   staticRoute("POST", "/api/events", handleCreateEvent),
@@ -67,6 +132,29 @@ const ROUTES: RouteDefinition[] = [
   staticRoute("GET", "/api/theme/settings", (_request, env) => handleThemeSettings(env)),
   staticRoute("PUT", "/api/theme/settings", handleUpdateThemeSettings),
   staticRoute("GET", "/api/editor/blocks", (_request, env) => handleEditorBlocks(env)),
+
+  staticRoute("GET", "/api/media", handleListMedia),
+  paramRoute("GET", "/api/media/:id", handleGetMediaById),
+  staticRoute("POST", "/api/media", handleCreateMedia),
+  paramRoute("PUT", "/api/media/:id", handleUpdateMedia),
+  paramRoute("DELETE", "/api/media/:id", handleDeleteMedia),
+
+  staticRoute("GET", "/api/forms", handleListForms),
+  staticRoute("POST", "/api/forms", handleCreateForm),
+  paramRoute("GET", "/api/forms/submissions/:submissionId", handleGetSubmission),
+  paramRoute("PUT", "/api/forms/submissions/:submissionId", handleUpdateSubmission),
+  paramRoute("DELETE", "/api/forms/submissions/:submissionId", handleDeleteSubmission),
+  paramRoute("GET", "/api/forms/:id/submissions", handleListFormSubmissions),
+  paramRoute("POST", "/api/forms/:id/fields/reorder", handleReorderFormFields),
+  paramRoute("POST", "/api/forms/:id/fields", handleCreateFormField),
+  paramRoute("PUT", "/api/forms/:id/fields/:fieldId", handleUpdateFormField),
+  paramRoute("DELETE", "/api/forms/:id/fields/:fieldId", handleDeleteFormField),
+  paramRoute("GET", "/api/forms/:id", handleGetForm),
+  paramRoute("PUT", "/api/forms/:id", handleUpdateForm),
+  paramRoute("DELETE", "/api/forms/:id", handleDeleteForm),
+
+  paramRoute("GET", "/api/public/forms/:slug", handlePublicGetForm),
+  paramRoute("POST", "/api/public/forms/:slug/submit", handlePublicSubmitForm),
 ];
 
 export default {

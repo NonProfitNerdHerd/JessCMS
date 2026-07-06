@@ -13,6 +13,8 @@ const NAV_ITEMS = [
   { href: "/admin/pages", label: "Pages", icon: "📄" },
   { href: "/admin/posts", label: "Posts", icon: "✎" },
   { href: "/admin/events", label: "Events", icon: "📅" },
+  { href: "/admin/media", label: "Media", icon: "🖼" },
+  { href: "/admin/forms", label: "Forms", icon: "📋" },
   { href: "/admin/settings/theme", label: "Theme", icon: "🎨" },
   { href: "/admin/plugins", label: "Plugins", icon: "🧩" },
   { href: "/admin/profile", label: "Profile", icon: "👤" },
@@ -34,12 +36,19 @@ export function renderAdminPage(options: AdminPageOptions): string {
     .join("");
 
   const isContentEdit = options.page === "content-edit";
+  const needsMediaLibrary = isContentEdit || options.page.startsWith("media");
+  const needsFormsBuilder = isContentEdit || options.page.startsWith("forms");
   const blockStyles = isContentEdit
     ? '  <link rel="stylesheet" href="/blocks.css">\n'
     : "";
-  const scriptSources = isContentEdit
-    ? ["/admin/block-render.js", "/admin/block-editor.js", ...(options.extraScripts ?? [])]
-    : [...(options.extraScripts ?? [])];
+  const scriptSources = [
+    ...(needsMediaLibrary ? ["/admin/media-library.js"] : []),
+    ...(needsFormsBuilder ? ["/admin/forms-builder.js"] : []),
+    ...(isContentEdit
+      ? ["/admin/block-render.js", "/admin/block-editor.js", "/admin/workflow-revisions.js"]
+      : []),
+    ...(options.extraScripts ?? []),
+  ];
 
   const extraScripts = scriptSources
     .map((src) => `  <script src="${src}" defer></script>`)

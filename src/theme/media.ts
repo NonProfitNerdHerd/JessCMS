@@ -1,8 +1,12 @@
+import type { MediaRecord } from "../media/repository";
+
 export interface MediaItem {
   id: string;
   url: string | null;
   alt: string | null;
   mimeType: string | null;
+  title?: string | null;
+  caption?: string | null;
 }
 
 export interface MediaProvider {
@@ -14,7 +18,18 @@ export interface MediaProvider {
   }): Promise<{ url: string | null; alt: string | null }>;
 }
 
-/** URL-only media provider until R2 uploads are implemented. */
+function toMediaItem(row: MediaRecord): MediaItem {
+  return {
+    id: row.id,
+    url: row.public_url,
+    alt: row.alt_text,
+    mimeType: row.mime_type,
+    title: row.title,
+    caption: row.caption,
+  };
+}
+
+/** URL-based media provider until R2 uploads are implemented. */
 export class UrlMediaProvider implements MediaProvider {
   constructor(private readonly db: D1Database) {}
 
@@ -23,18 +38,31 @@ export class UrlMediaProvider implements MediaProvider {
 
     const row = await this.db
       .prepare(
-        "SELECT id, url, alt_text AS alt, mime_type AS mimeType FROM media_items WHERE id = ?",
+        `
+          SELECT id, public_url, alt_text, mime_type, title, caption
+          FROM media_items
+          WHERE id = ?
+        `,
       )
       .bind(mediaId)
-      .first<{ id: string; url: string | null; alt: string | null; mimeType: string | null }>();
+      .first<{
+        id: string;
+        public_url: string | null;
+        alt_text: string | null;
+        mime_type: string;
+        title: string | null;
+        caption: string | null;
+      }>();
 
     if (!row) return null;
 
     return {
       id: row.id,
-      url: row.url,
-      alt: row.alt,
-      mimeType: row.mimeType,
+      url: row.public_url,
+      alt: row.alt_text,
+      mimeType: row.mime_type,
+      title: row.title,
+      caption: row.caption,
     };
   }
 
@@ -55,3 +83,5 @@ export class UrlMediaProvider implements MediaProvider {
     return { url: media.url, alt: input.alt ?? media.alt };
   }
 }
+
+export { toMediaItem };

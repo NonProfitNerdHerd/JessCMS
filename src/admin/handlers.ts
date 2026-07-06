@@ -1,5 +1,11 @@
 import { getCurrentUser } from "../auth";
 import {
+  formsEditShell,
+  formsListShell,
+  formsSubmissionsShell,
+  submissionDetailShell,
+} from "../plugins/forms-builder/admin-pages";
+import {
   htmlResponse,
   redirectResponse,
   renderAdminPage,
@@ -68,23 +74,27 @@ function editPageShell(type: string, label: string, isEvent = false): string {
     : "";
 
   return `
+    <div class="content-edit-layout">
+      <div class="content-edit-main">
     <form id="content-form" class="admin-form">
       <div id="form-error" class="alert alert-error hidden"></div>
       <div class="form-grid">
         <label class="field"><span>Title</span><input class="input" name="title" required></label>
         <label class="field"><span>Slug</span><input class="input" name="slug" required pattern="[a-z0-9-]+"></label>
-        <label class="field"><span>Status</span>
-          <select class="select" name="status">
-            <option value="draft">Draft</option>
-            <option value="scheduled">Scheduled</option>
-            <option value="published">Published</option>
-            <option value="archived">Archived</option>
-          </select>
-        </label>
+        <label class="field field-wide"><span>Change summary</span><input class="input" name="change_summary" placeholder="Brief note about this save (optional)"></label>
         <label class="field"><span>Published at</span><input class="input" name="published_at" type="datetime-local"></label>
         <label class="field field-wide"><span>Excerpt</span><textarea class="textarea" name="excerpt" rows="2"></textarea></label>
         <label class="field"><span>Template</span><input class="input" name="template"></label>
-        <label class="field"><span>Featured image ID</span><input class="input" name="featured_image_id"></label>
+        <input type="hidden" name="status" value="draft">
+        <div class="field field-wide featured-image-field" data-featured-image-field>
+          <span class="field-label">Featured image</span>
+          <input type="hidden" name="featured_image_id">
+          <div class="featured-image-preview muted" data-featured-image-preview>No image selected</div>
+          <div class="featured-image-actions">
+            <button type="button" class="btn btn-secondary btn-sm" data-featured-image-select>Select from library</button>
+            <button type="button" class="btn btn-secondary btn-sm hidden" data-featured-image-clear>Clear</button>
+          </div>
+        </div>
         <label class="field"><span>SEO title</span><input class="input" name="seo_title"></label>
         <label class="field field-wide"><span>SEO description</span><textarea class="textarea" name="seo_description" rows="2"></textarea></label>
       </div>
@@ -104,6 +114,7 @@ function editPageShell(type: string, label: string, isEvent = false): string {
                 <button type="button" data-add-type="list">List</button>
                 <button type="button" data-add-type="spacer">Spacer</button>
                 <button type="button" data-add-type="html">Custom HTML</button>
+                <button type="button" data-add-type="form">Form</button>
               </div>
             </div>
           </div>
@@ -117,12 +128,42 @@ function editPageShell(type: string, label: string, isEvent = false): string {
         <button type="button" class="btn btn-secondary btn-sm" id="apply-raw-json-btn">Apply raw JSON to editor</button>
       </details>
       <div class="form-actions">
-        <button type="button" class="btn btn-secondary" data-action="draft">Save draft</button>
-        <button type="button" class="btn btn-primary" data-action="publish">Publish</button>
-        <button type="button" class="btn btn-secondary" data-action="archive">Archive</button>
+        <button type="button" class="btn btn-secondary" data-action="save">Save</button>
         <button type="button" class="btn btn-danger" data-action="delete">Delete</button>
       </div>
     </form>
+      </div>
+      <aside class="content-edit-sidebar" id="content-sidebar">
+        <section class="admin-panel" id="workflow-panel">
+          <h2 class="admin-panel-title">Workflow</h2>
+          <div id="workflow-error" class="alert alert-error hidden"></div>
+          <div id="workflow-status" class="workflow-status">
+            <span class="workflow-badge" data-workflow-state>—</span>
+            <p class="muted workflow-meta" data-workflow-meta></p>
+          </div>
+          <label class="field"><span>Comment</span><textarea class="textarea" id="workflow-comment" rows="2" placeholder="Optional note for reviewers"></textarea></label>
+          <label class="field workflow-schedule-field hidden"><span>Schedule for</span><input class="input" id="workflow-scheduled-at" type="datetime-local"></label>
+          <div class="workflow-actions">
+            <button type="button" class="btn btn-secondary btn-sm" data-workflow-action="submit">Submit for review</button>
+            <button type="button" class="btn btn-secondary btn-sm" data-workflow-action="approve">Approve</button>
+            <button type="button" class="btn btn-secondary btn-sm" data-workflow-action="reject">Reject</button>
+            <button type="button" class="btn btn-primary btn-sm" data-workflow-action="publish">Publish</button>
+            <button type="button" class="btn btn-secondary btn-sm" data-workflow-action="schedule">Schedule</button>
+            <button type="button" class="btn btn-secondary btn-sm" data-workflow-action="archive">Archive</button>
+          </div>
+          <details class="workflow-history-details">
+            <summary>Workflow history</summary>
+            <ul class="workflow-history-list" id="workflow-history"></ul>
+          </details>
+        </section>
+        <section class="admin-panel" id="revisions-panel">
+          <h2 class="admin-panel-title">Revision history</h2>
+          <div id="revisions-error" class="alert alert-error hidden"></div>
+          <div id="revisions-list" class="revisions-list"></div>
+          <div id="revision-compare" class="revision-compare hidden"></div>
+        </section>
+      </aside>
+    </div>
   `;
 }
 
@@ -161,6 +202,8 @@ function renderDashboard(user: Awaited<ReturnType<typeof getCurrentUser>>): stri
         <a class="card-link" href="/admin/pages">Manage pages</a>
         <a class="card-link" href="/admin/posts">Manage posts</a>
         <a class="card-link" href="/admin/events">Manage events</a>
+        <a class="card-link" href="/admin/media">Media library</a>
+        <a class="card-link" href="/admin/forms">Forms</a>
         <a class="card-link" href="/admin/settings/theme">Theme settings</a>
         <a class="card-link" href="/admin/plugins">Plugins</a>
       </div>
@@ -228,6 +271,76 @@ function renderProfilePage(user: Awaited<ReturnType<typeof getCurrentUser>>): st
         </section>
         <button type="submit" class="btn btn-primary">Save profile</button>
       </form>
+    `,
+  });
+}
+
+function mediaFormShell(isNew: boolean): string {
+  return `
+    <div id="media-error" class="alert alert-error hidden"></div>
+    <div id="media-success" class="alert alert-success hidden"></div>
+    <form id="media-form" class="admin-form">
+      <div class="media-edit-layout">
+        <div class="media-preview-panel">
+          <div class="media-preview-box" id="media-preview">
+            <p class="muted">Preview will appear here</p>
+          </div>
+          <div class="media-url-actions">
+            <button type="button" class="btn btn-secondary btn-sm" id="copy-url-btn">Copy URL</button>
+          </div>
+        </div>
+        <div class="media-fields-panel">
+          <div class="form-grid">
+            <label class="field field-wide"><span>Public URL</span><input class="input" name="public_url" required placeholder="https://example.com/image.jpg" ${isNew ? "" : "readonly"}></label>
+            <label class="field"><span>Title</span><input class="input" name="title"></label>
+            <label class="field"><span>Filename</span><input class="input" name="filename"></label>
+            <label class="field"><span>Folder</span><input class="input" name="folder" placeholder="e.g. uploads"></label>
+            <label class="field"><span>MIME type</span><input class="input" name="mime_type" placeholder="image/jpeg"></label>
+            <label class="field"><span>File size (bytes)</span><input class="input" name="file_size" type="number" min="0"></label>
+            <label class="field"><span>Width</span><input class="input" name="width" type="number" min="0"></label>
+            <label class="field"><span>Height</span><input class="input" name="height" type="number" min="0"></label>
+            <label class="field field-wide"><span>Alt text</span><input class="input" name="alt_text"></label>
+            <label class="field field-wide"><span>Caption</span><input class="input" name="caption"></label>
+            <label class="field field-wide"><span>Description</span><textarea class="textarea" name="description" rows="3"></textarea></label>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">${isNew ? "Add media" : "Save changes"}</button>
+            ${isNew ? "" : '<button type="button" class="btn btn-danger" id="delete-media-btn">Delete</button>'}
+            <a class="btn btn-secondary" href="/admin/media">Back to library</a>
+          </div>
+        </div>
+      </div>
+    </form>
+  `;
+}
+
+function renderMediaLibraryPage(user: Awaited<ReturnType<typeof getCurrentUser>>): string {
+  return renderAdminPage({
+    title: "Media Library",
+    page: "media-list",
+    user,
+    content: `
+      <div class="admin-toolbar">
+        <a class="btn btn-primary" href="/admin/media/new">Add media URL</a>
+        <form class="admin-filters" id="media-filter-form">
+          <input type="search" name="q" placeholder="Search media" class="input">
+          <select name="mime_type" class="select">
+            <option value="">All types</option>
+            <option value="image/*">Images</option>
+            <option value="video/*">Videos</option>
+            <option value="application/pdf">PDF</option>
+          </select>
+          <select name="folder" class="select" id="media-folder-filter">
+            <option value="">All folders</option>
+          </select>
+          <button type="submit" class="btn btn-secondary">Filter</button>
+        </form>
+      </div>
+      <div id="media-error" class="alert alert-error hidden"></div>
+      <div class="media-grid" id="media-grid">
+        <p class="muted">Loading media…</p>
+      </div>
+      <div class="admin-pagination" id="media-pagination"></div>
     `,
   });
 }
@@ -408,6 +521,97 @@ export async function handleAdminRequest(
 
   if (pathname === "/admin/settings/theme") {
     return htmlResponse(renderThemePage(user));
+  }
+
+  if (pathname === "/admin/media") {
+    return htmlResponse(renderMediaLibraryPage(user));
+  }
+
+  if (pathname === "/admin/forms") {
+    return htmlResponse(
+      renderAdminPage({
+        title: "Forms",
+        page: "forms-list",
+        user,
+        content: formsListShell(),
+      }),
+    );
+  }
+
+  if (pathname === "/admin/forms/new") {
+    return htmlResponse(
+      renderAdminPage({
+        title: "New Form",
+        page: "forms-new",
+        user,
+        data: { id: "new" },
+        content: formsEditShell(true),
+      }),
+    );
+  }
+
+  const formSubmissions = pathname.match(/^\/admin\/forms\/([^/]+)\/submissions$/);
+  if (formSubmissions) {
+    return htmlResponse(
+      renderAdminPage({
+        title: "Form Submissions",
+        page: "forms-submissions",
+        user,
+        data: { formId: formSubmissions[1] },
+        content: formsSubmissionsShell(),
+      }),
+    );
+  }
+
+  const submissionDetail = pathname.match(/^\/admin\/forms\/submissions\/([^/]+)$/);
+  if (submissionDetail) {
+    return htmlResponse(
+      renderAdminPage({
+        title: "Submission",
+        page: "forms-submission-detail",
+        user,
+        data: { submissionId: submissionDetail[1] },
+        content: submissionDetailShell(),
+      }),
+    );
+  }
+
+  const formEdit = pathname.match(/^\/admin\/forms\/([^/]+)$/);
+  if (formEdit && formEdit[1] !== "new") {
+    return htmlResponse(
+      renderAdminPage({
+        title: "Edit Form",
+        page: "forms-edit",
+        user,
+        data: { id: formEdit[1] },
+        content: formsEditShell(false),
+      }),
+    );
+  }
+
+  if (pathname === "/admin/media/new") {
+    return htmlResponse(
+      renderAdminPage({
+        title: "Add Media",
+        page: "media-new",
+        user,
+        data: { id: "new" },
+        content: mediaFormShell(true),
+      }),
+    );
+  }
+
+  const mediaEdit = pathname.match(/^\/admin\/media\/([^/]+)$/);
+  if (mediaEdit && mediaEdit[1] !== "new") {
+    return htmlResponse(
+      renderAdminPage({
+        title: "Edit Media",
+        page: "media-edit",
+        user,
+        data: { id: mediaEdit[1] },
+        content: mediaFormShell(false),
+      }),
+    );
   }
 
   if (pathname === "/admin/plugins") {

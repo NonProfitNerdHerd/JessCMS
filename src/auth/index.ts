@@ -30,6 +30,21 @@ const PERMISSION_ALIASES: Record<string, string[]> = {
   "settings:update": ["theme.manage", "settings:update"],
   "plugins:read": ["plugins.manage", "plugins:read"],
   "plugins:update": ["plugins.manage", "plugins:update"],
+  "media:read": ["media:read"],
+  "media:create": ["media:create"],
+  "media:update": ["media:update"],
+  "media:delete": ["media:delete"],
+  "forms:read": ["forms:read"],
+  "forms:create": ["forms:create"],
+  "forms:update": ["forms:update"],
+  "forms:delete": ["forms:delete"],
+  "forms:submissions:read": ["forms:submissions:read"],
+  "forms:submissions:update": ["forms:submissions:update"],
+  "workflow:submit": ["workflow:submit"],
+  "workflow:approve": ["workflow:approve"],
+  "workflow:publish": ["workflow:publish", "content:publish", "content.publish"],
+  "revisions:read": ["revisions:read"],
+  "revisions:restore": ["revisions:restore"],
 };
 
 export async function getUserPermissions(

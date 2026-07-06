@@ -1,6 +1,7 @@
 import coreEvents from "../../plugins/core-events/manifest.json";
 import coreMedia from "../../plugins/core-media/manifest.json";
 import coreSeo from "../../plugins/core-seo/manifest.json";
+import formsBuilder from "../../plugins/forms-builder/manifest.json";
 import stormChaserExample from "../../plugins/storm-chaser-example/manifest.json";
 
 export interface PluginManifest {
@@ -20,6 +21,7 @@ export const PLUGIN_MANIFESTS: PluginManifest[] = [
   coreEvents as PluginManifest,
   coreMedia as PluginManifest,
   coreSeo as PluginManifest,
+  formsBuilder as PluginManifest,
   stormChaserExample as PluginManifest,
 ];
 
@@ -222,6 +224,17 @@ export const BLOCK_TYPES = [
       title: { type: "string" },
       message: { type: "string" },
       dismissible: { type: "boolean", default: true },
+    },
+  },
+  {
+    type: "form",
+    label: "Form",
+    category: "forms",
+    source: "forms-builder",
+    props_schema: {
+      form_id: { type: "string" },
+      form_slug: { type: "string" },
+      display_style: { type: "string", default: "embedded" },
     },
   },
   {

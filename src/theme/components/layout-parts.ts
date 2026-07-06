@@ -93,6 +93,7 @@ ${showChrome ? renderHeader(ctx) : ""}
 ${bodyInner}
 ${showChrome ? renderFooter(ctx) : ""}
 <script>${applyJsInjectors()}</script>
+<script src="/forms-embed.js" defer></script>
 ${applyBodyEndInjectors(ctx)}
 </body>
 </html>`;

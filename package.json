@@ -15,7 +15,10 @@
     "user:list": "node scripts/reset-password.mjs --list",
     "test:admin": "node scripts/admin-smoke-test.mjs",
     "test:editor": "node scripts/block-editor-smoke-test.mjs",
-    "test:frontend": "node scripts/frontend-smoke-test.mjs"
+    "test:frontend": "node scripts/frontend-smoke-test.mjs",
+    "test:media": "node scripts/media-smoke-test.mjs",
+    "test:forms": "node scripts/forms-smoke-test.mjs",
+    "test:workflow": "node scripts/workflow-smoke-test.mjs"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250317.0",

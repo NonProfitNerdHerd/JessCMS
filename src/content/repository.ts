@@ -11,6 +11,12 @@ import {
   validateEventInput,
 } from "../lib/validation";
 import { getClientIp, resolveAuditAction, writeAuditLog } from "../db/audit";
+import { createContentRevision } from "../revisions/repository";
+import {
+  ensureWorkflowState,
+  workflowStateFromContentStatus,
+} from "../workflow/repository";
+import { tableToEntityType } from "../workflow/types";
 
 export interface ContentRecord {
   id: string;
@@ -297,6 +303,20 @@ export async function createPage(
     ipAddress: getClientIp(request),
   });
 
+  await ensureWorkflowState(
+    env.DB,
+    "page",
+    id,
+    workflowStateFromContentStatus(input.status ?? "draft"),
+  );
+  await createContentRevision(
+    env.DB,
+    "page",
+    id,
+    user.id,
+    (input as { change_summary?: string }).change_summary ?? "Initial version",
+  );
+
   return created!;
 }
 
@@ -346,6 +366,20 @@ export async function createPost(
     metadata: { title: input.title, slug: input.slug, status: input.status ?? "draft" },
     ipAddress: getClientIp(request),
   });
+
+  await ensureWorkflowState(
+    env.DB,
+    "post",
+    id,
+    workflowStateFromContentStatus(input.status ?? "draft"),
+  );
+  await createContentRevision(
+    env.DB,
+    "post",
+    id,
+    user.id,
+    (input as { change_summary?: string }).change_summary ?? "Initial version",
+  );
 
   return created!;
 }
@@ -409,6 +443,20 @@ export async function createEvent(
     metadata: { title: input.title, slug: input.slug, status: input.status ?? "draft" },
     ipAddress: getClientIp(request),
   });
+
+  await ensureWorkflowState(
+    env.DB,
+    "event",
+    id,
+    workflowStateFromContentStatus(input.status ?? "draft"),
+  );
+  await createContentRevision(
+    env.DB,
+    "event",
+    id,
+    user.id,
+    (input as { change_summary?: string }).change_summary ?? "Initial version",
+  );
 
   return created!;
 }
@@ -515,6 +563,10 @@ async function updateRecord<T extends ContentRecord>(
     metadata: { changes: input },
     ipAddress: getClientIp(request),
   });
+
+  const changeSummary =
+    typeof input.change_summary === "string" ? input.change_summary : "Content updated";
+  await createContentRevision(env.DB, tableToEntityType(table), id, user.id, changeSummary);
 
   return updated!;
 }

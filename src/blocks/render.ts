@@ -170,6 +170,8 @@ export function defaultBlockProps(type: string): Record<string, unknown> {
       return { height: "2rem" };
     case "html":
       return { raw_html: "" };
+    case "form":
+      return { form_id: "", form_slug: "", display_style: "embedded" };
     default:
       return {};
   }
@@ -208,7 +210,7 @@ export function normalizeBlock(raw: Partial<Block>): Block {
       ...(raw.style ?? {}),
       ...(alignment ? { textAlign: alignment as BlockStyle["textAlign"] } : {}),
     },
-    plugin_source: raw.plugin_source ?? null,
+    plugin_source: raw.plugin_source ?? (type === "form" ? "forms-builder" : null),
   };
 }
 

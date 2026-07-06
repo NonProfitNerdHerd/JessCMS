@@ -1,0 +1,34 @@
+{
+  "id": "forms-builder",
+  "name": "Forms Builder",
+  "version": "0.1.0",
+  "description": "Build contact forms, surveys, and lead capture forms with submissions inbox.",
+  "enabled": true,
+  "admin_routes": [
+    { "path": "/forms", "label": "Forms", "icon": "form" }
+  ],
+  "api_routes": [
+    { "method": "GET", "path": "/forms", "handler": "listForms" },
+    { "method": "POST", "path": "/forms", "handler": "createForm" },
+    { "method": "GET", "path": "/forms/:id", "handler": "getForm" },
+    { "method": "PUT", "path": "/forms/:id", "handler": "updateForm" },
+    { "method": "DELETE", "path": "/forms/:id", "handler": "deleteForm" },
+    { "method": "GET", "path": "/public/forms/:slug", "handler": "getPublicForm" },
+    { "method": "POST", "path": "/public/forms/:slug/submit", "handler": "submitPublicForm" }
+  ],
+  "blocks": [
+    {
+      "type": "form",
+      "label": "Form",
+      "category": "forms"
+    }
+  ],
+  "permissions": [
+    "forms:read",
+    "forms:create",
+    "forms:update",
+    "forms:delete",
+    "forms:submissions:read",
+    "forms:submissions:update"
+  ]
+}

@@ -62,6 +62,7 @@
       case "image":
         return `
           ${field("URL", `<input class="input block-input" data-prop="url" value="${R.escapeHtml(block.props.url)}">`)}
+          <p class="block-media-actions"><button type="button" class="btn btn-secondary btn-sm" data-action="pick-media">Choose from library</button></p>
           ${field("Alt text", `<input class="input block-input" data-prop="alt" value="${R.escapeHtml(block.props.alt)}">`)}
           ${field("Caption", `<input class="input block-input" data-prop="caption" value="${R.escapeHtml(block.props.caption)}">`)}
         `;
@@ -102,6 +103,30 @@
           "Raw HTML",
           `<textarea class="textarea code block-input" data-prop="raw_html" rows="6">${R.escapeHtml(block.props.raw_html ?? block.props.raw ?? "")}</textarea>`,
         );
+      case "form": {
+        const forms = global.__jessFormsList ?? [];
+        const options = forms
+          .map(
+            (form) =>
+              `<option value="${R.escapeHtml(form.slug)}" data-form-id="${R.escapeHtml(form.id)}" ${block.props.form_slug === form.slug ? "selected" : ""}>${R.escapeHtml(form.title)} (${R.escapeHtml(form.slug)})</option>`,
+          )
+          .join("");
+        return `
+          ${field(
+            "Form",
+            `<select class="input block-input" data-prop="form_slug"><option value="">Select a form</option>${options}</select>`,
+          )}
+          ${field("Form ID", `<input class="input block-input" data-prop="form_id" value="${R.escapeHtml(block.props.form_id)}" readonly>`)}
+          ${field(
+            "Display style",
+            `<select class="input block-input" data-prop="display_style">
+              <option value="embedded" ${block.props.display_style === "embedded" ? "selected" : ""}>Embedded</option>
+              <option value="card" ${block.props.display_style === "card" ? "selected" : ""}>Card</option>
+              <option value="minimal" ${block.props.display_style === "minimal" ? "selected" : ""}>Minimal</option>
+            </select>`,
+          )}
+        `;
+      }
       default:
         return `<p class="muted">Unsupported block type.</p>`;
     }
@@ -174,6 +199,9 @@
 
     addBlock(type, index) {
       const block = R.createBlock(type);
+      if (type === "form") {
+        block.plugin_source = "forms-builder";
+      }
       if (index === undefined) {
         this.doc.blocks.push(block);
       } else {
@@ -243,6 +271,13 @@
           return;
         }
 
+        if (prop === "form_slug") {
+          block.props.form_slug = input.value;
+          const option = input.selectedOptions?.[0];
+          block.props.form_id = option?.dataset?.formId ?? "";
+          return;
+        }
+
         block.props[prop] = input.value;
       });
     }
@@ -271,6 +306,24 @@
         if (this.collapsed.has(id)) this.collapsed.delete(id);
         else this.collapsed.add(id);
         card.classList.toggle("block-card-collapsed");
+      });
+
+      card.querySelector("[data-action='pick-media']")?.addEventListener("click", () => {
+        if (!global.JessMediaLibrary) return;
+        global.JessMediaLibrary.open({
+          mimeType: "image/*",
+          onSelect: (item) => {
+            const block = this.doc.blocks[index];
+            block.props.url = item.public_url || item.resolved_url || "";
+            block.props.alt = item.alt_text || item.title || "";
+            if (item.caption && !block.props.caption) {
+              block.props.caption = item.caption;
+            }
+            block.props.media_id = item.id;
+            this.syncRawFields();
+            this.render();
+          },
+        });
       });
     }
 

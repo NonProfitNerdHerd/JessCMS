@@ -8,6 +8,7 @@
     "list",
     "spacer",
     "html",
+    "form",
   ];
 
   const BLOCK_LABELS = {
@@ -19,6 +20,7 @@
     list: "List",
     spacer: "Spacer",
     html: "Custom HTML",
+    form: "Form",
   };
 
   function escapeHtml(value) {
@@ -115,6 +117,14 @@
         const raw = String(block.props.raw_html ?? block.props.raw ?? "");
         return `<div class="${classes}">${raw}</div>`;
       }
+      case "form": {
+        const slug = escapeHtml(block.props.form_slug);
+        const style = escapeHtml(block.props.display_style ?? "embedded");
+        if (!slug) {
+          return `<div class="${classes} jess-form-empty"><p>Select a form.</p></div>`;
+        }
+        return `<div class="${classes} jess-form jess-form-${style}" data-jess-form-embed="1" data-form-slug="${slug}" data-display-style="${style}"><p>Form: ${slug}</p></div>`;
+      }
       default:
         return `<!-- unsupported block: ${escapeHtml(block.type)} -->`;
     }
@@ -153,6 +163,8 @@
         return { height: "2rem" };
       case "html":
         return { raw_html: "" };
+      case "form":
+        return { form_id: "", form_slug: "", display_style: "embedded" };
       default:
         return {};
     }
@@ -189,7 +201,7 @@
         ...(raw.style ?? {}),
         ...(alignment ? { textAlign: alignment } : {}),
       },
-      plugin_source: raw.plugin_source ?? null,
+      plugin_source: raw.plugin_source ?? (type === "form" ? "forms-builder" : null),
     };
   }
 
