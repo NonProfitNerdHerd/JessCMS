@@ -1,0 +1,267 @@
+/* Jess Default — public theme for JessCMS */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body.jess-theme {
+  margin: 0;
+  font-family: var(--jess-body-font, system-ui, sans-serif);
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--jess-text, #1e293b);
+  background: var(--jess-bg, #ffffff);
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--jess-heading-font, system-ui, sans-serif);
+  line-height: 1.25;
+  margin: 0 0 0.75rem;
+}
+
+a {
+  color: var(--jess-primary, #2563eb);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.15em;
+}
+
+a:hover {
+  color: var(--jess-secondary, #64748b);
+}
+
+.jess-container {
+  width: min(100% - 2rem, var(--jess-layout-width, 1200px));
+  margin-inline: auto;
+}
+
+.jess-header {
+  border-bottom: 1px solid color-mix(in srgb, var(--jess-text) 12%, transparent);
+  background: var(--jess-bg);
+}
+
+.jess-header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 1rem 0;
+  flex-wrap: wrap;
+}
+
+.jess-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: inherit;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 1.125rem;
+}
+
+.jess-logo {
+  max-height: 2.5rem;
+  width: auto;
+}
+
+.jess-nav-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  align-items: center;
+}
+
+.jess-nav-sublist {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0 0 0 1rem;
+}
+
+.jess-nav-item a {
+  display: inline-block;
+  padding: 0.35rem 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.jess-nav-item.is-active > a,
+.jess-nav-item a:hover {
+  color: var(--jess-primary);
+}
+
+.jess-main {
+  padding: 2rem 0 3rem;
+}
+
+.jess-layout {
+  display: grid;
+  gap: 2rem;
+}
+
+.jess-layout-sidebar-right {
+  grid-template-columns: minmax(0, 1fr) 280px;
+}
+
+.jess-layout-sidebar-left {
+  grid-template-columns: 280px minmax(0, 1fr);
+}
+
+.jess-sidebar {
+  padding: 1rem;
+  border: 1px solid color-mix(in srgb, var(--jess-text) 10%, transparent);
+  border-radius: var(--jess-radius, 0.375rem);
+  background: color-mix(in srgb, var(--jess-bg) 92%, var(--jess-primary));
+}
+
+.jess-sidebar-title {
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.75rem;
+}
+
+.jess-page-header {
+  margin-bottom: 1.5rem;
+}
+
+.jess-page-header h1 {
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+}
+
+.jess-intro,
+.jess-meta {
+  color: color-mix(in srgb, var(--jess-text) 70%, transparent);
+  margin: 0.5rem 0 0;
+}
+
+.jess-card-grid {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.jess-card {
+  padding: 1.25rem;
+  border: 1px solid color-mix(in srgb, var(--jess-text) 10%, transparent);
+  border-radius: var(--jess-radius, 0.375rem);
+}
+
+.jess-card-title {
+  font-size: 1.25rem;
+  margin: 0 0 0.5rem;
+}
+
+.jess-card-title a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.jess-card-title a:hover {
+  color: var(--jess-primary);
+}
+
+.jess-card-meta,
+.jess-card-excerpt {
+  margin: 0.35rem 0 0;
+  color: color-mix(in srgb, var(--jess-text) 75%, transparent);
+}
+
+.jess-pagination {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin-top: 2rem;
+  flex-wrap: wrap;
+}
+
+.jess-pagination-link {
+  padding: 0.5rem 0.85rem;
+  border: 1px solid color-mix(in srgb, var(--jess-text) 15%, transparent);
+  border-radius: var(--jess-button-radius, var(--jess-radius));
+  text-decoration: none;
+}
+
+.jess-content .jess-button {
+  display: inline-block;
+  padding: 0.65rem 1.1rem;
+  border-radius: var(--jess-button-radius, var(--jess-radius));
+  text-decoration: none;
+  font-weight: 600;
+  border: 2px solid transparent;
+}
+
+.jess-content .jess-button.primary {
+  background: var(--jess-primary);
+  color: #fff;
+}
+
+.jess-content .jess-button.secondary {
+  background: var(--jess-secondary);
+  color: #fff;
+}
+
+.jess-content .jess-button.outline {
+  background: transparent;
+  border-color: var(--jess-primary);
+  color: var(--jess-primary);
+}
+
+.jess-event-meta {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  border-left: 4px solid var(--jess-primary);
+  background: color-mix(in srgb, var(--jess-primary) 8%, var(--jess-bg));
+}
+
+.jess-error-page {
+  text-align: center;
+  padding: 3rem 1rem;
+}
+
+.jess-footer {
+  border-top: 1px solid color-mix(in srgb, var(--jess-text) 12%, transparent);
+  padding: 2rem 0;
+  margin-top: auto;
+}
+
+.jess-footer-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.jess-footer-copy {
+  margin: 0;
+  font-size: 0.875rem;
+  color: color-mix(in srgb, var(--jess-text) 65%, transparent);
+}
+
+.jess-landing .jess-page-header h1 {
+  font-size: clamp(2rem, 5vw, 3rem);
+}
+
+.jess-full-width .jess-main-content {
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .jess-layout-sidebar-right,
+  .jess-layout-sidebar-left {
+    grid-template-columns: 1fr;
+  }
+
+  .jess-header-inner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

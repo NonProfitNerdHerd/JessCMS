@@ -29,6 +29,7 @@ import {
   handleThemeSettings,
   handleUpdateThemeSettings,
 } from "./routes/theme-settings";
+import { handlePublicRequest } from "./public/handler";
 import { serverError } from "./lib/response";
 
 const ROUTES: RouteDefinition[] = [
@@ -85,6 +86,11 @@ export default {
       const matched = matchRoute(request.method, url.pathname, ROUTES);
       if (matched) {
         return matched.handler(request, env, matched.params);
+      }
+
+      const publicResponse = await handlePublicRequest(request, env);
+      if (publicResponse) {
+        return publicResponse;
       }
 
       if (env.ASSETS) {

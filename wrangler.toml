@@ -12,3 +12,4 @@ migrations_dir = "migrations"
 
 [assets]
 directory = "./public"
+binding = "ASSETS"

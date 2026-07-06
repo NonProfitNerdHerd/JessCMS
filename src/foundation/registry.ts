@@ -238,6 +238,7 @@ export const BLOCK_TYPES = [
 ] as const;
 
 export const DEFAULT_THEME_SETTINGS = {
+  theme_name: "Jess Default",
   site_name: "JessCMS Site",
   logo_url: null,
   favicon_url: null,
@@ -249,6 +250,7 @@ export const DEFAULT_THEME_SETTINGS = {
   body_font: "system-ui, sans-serif",
   button_style: { variant: "solid", radius: "0.375rem", size: "md" },
   layout_width: "1200px",
+  border_radius: "0.375rem",
   custom_css: "",
 } as const;
 

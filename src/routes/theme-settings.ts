@@ -7,6 +7,7 @@ import {
 import { DEFAULT_THEME_SETTINGS, getRegisteredBlocks } from "../foundation/registry";
 
 const THEME_KEYS = [
+  "theme_name",
   "site_name",
   "logo_url",
   "favicon_url",
@@ -18,6 +19,7 @@ const THEME_KEYS = [
   "body_font",
   "button_style",
   "layout_width",
+  "border_radius",
   "custom_css",
 ] as const;
 
