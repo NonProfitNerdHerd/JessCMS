@@ -18,7 +18,13 @@
     "test:frontend": "node scripts/frontend-smoke-test.mjs",
     "test:media": "node scripts/media-smoke-test.mjs",
     "test:forms": "node scripts/forms-smoke-test.mjs",
-    "test:workflow": "node scripts/workflow-smoke-test.mjs"
+    "test:workflow": "node scripts/workflow-smoke-test.mjs",
+    "test:extensibility": "node scripts/extensibility-smoke-test.mjs",
+    "test:runtime": "node scripts/runtime-smoke-test.mjs",
+    "plugins:validate": "node scripts/plugins-cli.mjs validate",
+    "plugins:list": "node scripts/plugins-cli.mjs list",
+    "plugins:sync": "node scripts/plugins-cli.mjs sync",
+    "plugins:refresh": "node scripts/plugins-cli.mjs refresh"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250317.0",

@@ -8,17 +8,23 @@ function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
-const NAV_ITEMS = [
+const STATIC_NAV_ITEMS = [
   { href: "/admin/dashboard", label: "Dashboard", icon: "⌂" },
-  { href: "/admin/pages", label: "Pages", icon: "📄" },
-  { href: "/admin/posts", label: "Posts", icon: "✎" },
-  { href: "/admin/events", label: "Events", icon: "📅" },
   { href: "/admin/media", label: "Media", icon: "🖼" },
-  { href: "/admin/forms", label: "Forms", icon: "📋" },
   { href: "/admin/settings/theme", label: "Theme", icon: "🎨" },
   { href: "/admin/plugins", label: "Plugins", icon: "🧩" },
   { href: "/admin/profile", label: "Profile", icon: "👤" },
 ];
+
+function buildNavItems(
+  contentTypeNav: Array<{ href: string; label: string; icon: string }> = [],
+): Array<{ href: string; label: string; icon: string }> {
+  return [
+    STATIC_NAV_ITEMS[0],
+    ...contentTypeNav,
+    ...STATIC_NAV_ITEMS.slice(1),
+  ];
+}
 
 export interface AdminPageOptions {
   title: string;
@@ -28,6 +34,7 @@ export interface AdminPageOptions {
   data?: Record<string, string>;
   standalone?: boolean;
   extraScripts?: string[];
+  contentTypeNav?: Array<{ href: string; label: string; icon: string }>;
 }
 
 export function renderAdminPage(options: AdminPageOptions): string {
@@ -77,7 +84,7 @@ ${scriptTags}
     ? escapeHtml(options.user.name ?? options.user.email)
     : "Admin";
 
-  const nav = NAV_ITEMS.map(
+  const nav = buildNavItems(options.contentTypeNav).map(
     (item) =>
       `<a class="admin-nav-link" href="${item.href}"><span class="admin-nav-icon">${item.icon}</span>${item.label}</a>`,
   ).join("");

@@ -1,3 +1,4 @@
+import { getAdminNavigation, type AdminNavItem } from "../runtime/navigation";
 import { getCurrentUser } from "../auth";
 import {
   formsEditShell,
@@ -9,7 +10,10 @@ import {
   htmlResponse,
   redirectResponse,
   renderAdminPage,
+  type AdminPageOptions,
 } from "./layout";
+
+type ContentTypeNav = AdminNavItem[];
 
 const PUBLIC_ADMIN_PATHS = new Set(["/admin/login"]);
 
@@ -187,11 +191,15 @@ function renderLoginPage(): string {
   });
 }
 
-function renderDashboard(user: Awaited<ReturnType<typeof getCurrentUser>>): string {
+function renderDashboard(
+  user: Awaited<ReturnType<typeof getCurrentUser>>,
+  contentTypeNav: ContentTypeNav,
+): string {
   return renderAdminPage({
     title: "Dashboard",
     page: "dashboard",
     user,
+    contentTypeNav,
     content: `
       <div class="stats-grid" id="dashboard-stats">
         <div class="stat-card"><span class="stat-label">Pages</span><strong class="stat-value" data-stat="pages">…</strong></div>
@@ -211,11 +219,15 @@ function renderDashboard(user: Awaited<ReturnType<typeof getCurrentUser>>): stri
   });
 }
 
-function renderThemePage(user: Awaited<ReturnType<typeof getCurrentUser>>): string {
+function renderThemePage(
+  user: Awaited<ReturnType<typeof getCurrentUser>>,
+  contentTypeNav: ContentTypeNav,
+): string {
   return renderAdminPage({
     title: "Theme Settings",
     page: "theme",
     user,
+    contentTypeNav,
     content: `
       <div id="theme-error" class="alert alert-error hidden"></div>
       <div id="theme-success" class="alert alert-success hidden"></div>
@@ -240,11 +252,15 @@ function renderThemePage(user: Awaited<ReturnType<typeof getCurrentUser>>): stri
   });
 }
 
-function renderProfilePage(user: Awaited<ReturnType<typeof getCurrentUser>>): string {
+function renderProfilePage(
+  user: Awaited<ReturnType<typeof getCurrentUser>>,
+  contentTypeNav: ContentTypeNav,
+): string {
   return renderAdminPage({
     title: "Profile",
     page: "profile",
     user,
+    contentTypeNav,
     content: `
       <div id="profile-error" class="alert alert-error hidden"></div>
       <div id="profile-success" class="alert alert-success hidden"></div>
@@ -314,11 +330,15 @@ function mediaFormShell(isNew: boolean): string {
   `;
 }
 
-function renderMediaLibraryPage(user: Awaited<ReturnType<typeof getCurrentUser>>): string {
+function renderMediaLibraryPage(
+  user: Awaited<ReturnType<typeof getCurrentUser>>,
+  contentTypeNav: ContentTypeNav,
+): string {
   return renderAdminPage({
     title: "Media Library",
     page: "media-list",
     user,
+    contentTypeNav,
     content: `
       <div class="admin-toolbar">
         <a class="btn btn-primary" href="/admin/media/new">Add media URL</a>
@@ -345,13 +365,18 @@ function renderMediaLibraryPage(user: Awaited<ReturnType<typeof getCurrentUser>>
   });
 }
 
-function renderPluginsPage(user: Awaited<ReturnType<typeof getCurrentUser>>): string {
+function renderPluginsPage(
+  user: Awaited<ReturnType<typeof getCurrentUser>>,
+  contentTypeNav: ContentTypeNav,
+): string {
   return renderAdminPage({
     title: "Plugins",
     page: "plugins",
     user,
+    contentTypeNav,
     content: `
       <div id="plugins-error" class="alert alert-error hidden"></div>
+      <div id="plugins-success" class="alert alert-success hidden"></div>
       <div class="table-wrap">
         <table class="admin-table" id="plugins-table">
           <thead>
@@ -359,14 +384,26 @@ function renderPluginsPage(user: Awaited<ReturnType<typeof getCurrentUser>>): st
               <th>Name</th>
               <th>ID</th>
               <th>Version</th>
+              <th>Status</th>
+              <th>Registered</th>
               <th>Description</th>
-              <th>Enabled</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody id="plugins-table-body">
-            <tr><td colspan="5" class="muted">Loading…</td></tr>
+            <tr><td colspan="7" class="muted">Loading…</td></tr>
           </tbody>
         </table>
+      </div>
+      <div id="plugin-uninstall-panel" class="admin-panel hidden">
+        <h2 class="admin-panel-title">Uninstall preview</h2>
+        <div id="plugin-uninstall-preview" class="muted"></div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary btn-sm" data-uninstall-mode="disable_only">Disable only</button>
+          <button type="button" class="btn btn-secondary btn-sm" data-uninstall-mode="uninstall_retain">Uninstall, retain data</button>
+          <button type="button" class="btn btn-secondary btn-sm" data-uninstall-mode="uninstall_archive">Uninstall, archive data</button>
+          <button type="button" class="btn btn-danger btn-sm" data-uninstall-mode="uninstall_delete">Uninstall, delete owned entities</button>
+        </div>
       </div>
     `,
   });
@@ -404,8 +441,10 @@ export async function handleAdminRequest(
     return redirectResponse("/admin/login");
   }
 
+  const contentTypeNav = await getAdminNavigation(env);
+
   if (pathname === "/admin/dashboard") {
-    return htmlResponse(renderDashboard(user));
+    return htmlResponse(renderDashboard(user, contentTypeNav));
   }
 
   if (pathname === "/admin/pages") {
@@ -414,6 +453,7 @@ export async function handleAdminRequest(
         title: "Pages",
         page: "content-list",
         user,
+        contentTypeNav,
         data: { type: "pages", label: "Page" },
         content: listPageShell("pages", "Page"),
       }),
@@ -426,6 +466,7 @@ export async function handleAdminRequest(
         title: "New Page",
         page: "content-edit",
         user,
+        contentTypeNav,
         data: { type: "pages", id: "new", label: "Page" },
         content: editPageShell("pages", "Page"),
       }),
@@ -439,6 +480,7 @@ export async function handleAdminRequest(
         title: "Edit Page",
         page: "content-edit",
         user,
+        contentTypeNav,
         data: { type: "pages", id: pageEdit[1], label: "Page" },
         content: editPageShell("pages", "Page"),
       }),
@@ -451,6 +493,7 @@ export async function handleAdminRequest(
         title: "Posts",
         page: "content-list",
         user,
+        contentTypeNav,
         data: { type: "posts", label: "Post" },
         content: listPageShell("posts", "Post"),
       }),
@@ -463,6 +506,7 @@ export async function handleAdminRequest(
         title: "New Post",
         page: "content-edit",
         user,
+        contentTypeNav,
         data: { type: "posts", id: "new", label: "Post" },
         content: editPageShell("posts", "Post"),
       }),
@@ -476,6 +520,7 @@ export async function handleAdminRequest(
         title: "Edit Post",
         page: "content-edit",
         user,
+        contentTypeNav,
         data: { type: "posts", id: postEdit[1], label: "Post" },
         content: editPageShell("posts", "Post"),
       }),
@@ -488,6 +533,7 @@ export async function handleAdminRequest(
         title: "Events",
         page: "content-list",
         user,
+        contentTypeNav,
         data: { type: "events", label: "Event" },
         content: listPageShell("events", "Event"),
       }),
@@ -500,6 +546,7 @@ export async function handleAdminRequest(
         title: "New Event",
         page: "content-edit",
         user,
+        contentTypeNav,
         data: { type: "events", id: "new", label: "Event" },
         content: editPageShell("events", "Event", true),
       }),
@@ -513,6 +560,7 @@ export async function handleAdminRequest(
         title: "Edit Event",
         page: "content-edit",
         user,
+        contentTypeNav,
         data: { type: "events", id: eventEdit[1], label: "Event" },
         content: editPageShell("events", "Event", true),
       }),
@@ -520,11 +568,11 @@ export async function handleAdminRequest(
   }
 
   if (pathname === "/admin/settings/theme") {
-    return htmlResponse(renderThemePage(user));
+    return htmlResponse(renderThemePage(user, contentTypeNav));
   }
 
   if (pathname === "/admin/media") {
-    return htmlResponse(renderMediaLibraryPage(user));
+    return htmlResponse(renderMediaLibraryPage(user, contentTypeNav));
   }
 
   if (pathname === "/admin/forms") {
@@ -533,6 +581,7 @@ export async function handleAdminRequest(
         title: "Forms",
         page: "forms-list",
         user,
+        contentTypeNav,
         content: formsListShell(),
       }),
     );
@@ -544,6 +593,7 @@ export async function handleAdminRequest(
         title: "New Form",
         page: "forms-new",
         user,
+        contentTypeNav,
         data: { id: "new" },
         content: formsEditShell(true),
       }),
@@ -557,6 +607,7 @@ export async function handleAdminRequest(
         title: "Form Submissions",
         page: "forms-submissions",
         user,
+        contentTypeNav,
         data: { formId: formSubmissions[1] },
         content: formsSubmissionsShell(),
       }),
@@ -570,6 +621,7 @@ export async function handleAdminRequest(
         title: "Submission",
         page: "forms-submission-detail",
         user,
+        contentTypeNav,
         data: { submissionId: submissionDetail[1] },
         content: submissionDetailShell(),
       }),
@@ -583,6 +635,7 @@ export async function handleAdminRequest(
         title: "Edit Form",
         page: "forms-edit",
         user,
+        contentTypeNav,
         data: { id: formEdit[1] },
         content: formsEditShell(false),
       }),
@@ -595,6 +648,7 @@ export async function handleAdminRequest(
         title: "Add Media",
         page: "media-new",
         user,
+        contentTypeNav,
         data: { id: "new" },
         content: mediaFormShell(true),
       }),
@@ -608,6 +662,7 @@ export async function handleAdminRequest(
         title: "Edit Media",
         page: "media-edit",
         user,
+        contentTypeNav,
         data: { id: mediaEdit[1] },
         content: mediaFormShell(false),
       }),
@@ -615,11 +670,11 @@ export async function handleAdminRequest(
   }
 
   if (pathname === "/admin/plugins") {
-    return htmlResponse(renderPluginsPage(user));
+    return htmlResponse(renderPluginsPage(user, contentTypeNav));
   }
 
   if (pathname === "/admin/profile") {
-    return htmlResponse(renderProfilePage(user));
+    return htmlResponse(renderProfilePage(user, contentTypeNav));
   }
 
   return null;

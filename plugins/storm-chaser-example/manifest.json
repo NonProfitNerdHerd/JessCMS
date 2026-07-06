@@ -3,10 +3,18 @@
   "name": "Storm Chaser Example",
   "version": "0.1.0",
   "description": "Example vertical plugin for storm chaser sites: alerts, radar, livestream blocks.",
+  "author": "JessCMS",
+  "homepage": "https://github.com/ike-j-rebout/JessCMS",
+  "minimum_jesscms_version": "0.9.0",
   "enabled": false,
-  "admin_routes": [
-    { "path": "/alerts", "label": "Weather Alerts", "icon": "alert-triangle" },
-    { "path": "/radar", "label": "Radar", "icon": "cloud-lightning" }
+  "kind": "optional",
+  "optional_dependencies": [
+    { "plugin_id": "storm-platform" }
+  ],
+  "permissions": ["storm.alerts.read", "storm.radar.read"],
+  "admin_pages": [
+    { "path": "/alerts", "label": "Weather Alerts", "icon": "⚠", "sort_order": 110, "permission": "storm.alerts.read" },
+    { "path": "/radar", "label": "Radar", "icon": "🌩", "sort_order": 120, "permission": "storm.radar.read" }
   ],
   "api_routes": [
     { "method": "GET", "path": "/alerts", "handler": "listAlerts" },
@@ -14,25 +22,24 @@
   ],
   "blocks": [
     { "type": "alert_banner", "label": "Alert Banner", "category": "storm" },
-    { "type": "plugin_block", "label": "Radar Embed", "category": "storm", "block_type": "radar_embed" }
+    { "type": "radar_embed", "label": "Radar Embed", "category": "storm", "block_type": "radar_embed" }
   ],
-  "settings_schema": {
-    "type": "object",
-    "properties": {
-      "default_radar_region": {
-        "type": "string",
-        "default": "midwest",
-        "description": "Default radar region for embed blocks"
-      },
-      "alert_severity_colors": {
+  "settings_pages": [
+    {
+      "slug": "storm-chaser",
+      "label": "Storm Chaser",
+      "icon": "🌩",
+      "permission": "storm.alerts.read",
+      "schema": {
         "type": "object",
-        "default": {
-          "info": "#3b82f6",
-          "warning": "#f59e0b",
-          "severe": "#ef4444"
+        "properties": {
+          "default_radar_region": {
+            "type": "string",
+            "default": "midwest"
+          }
         }
       }
     }
-  },
-  "permissions": ["storm.alerts.read", "storm.radar.read"]
+  ],
+  "cleanup_policy": "retain"
 }

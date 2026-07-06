@@ -23,7 +23,26 @@ import {
 } from "./routes/content";
 import { handleContentTypes } from "./routes/content-types";
 import { handleHealth } from "./routes/health";
-import { handlePlugins, handleUpdatePlugin } from "./routes/plugins";
+import {
+  handleDisablePlugin,
+  handleEnablePlugin,
+  handleGetPluginResources,
+  handlePlugins,
+  handleUninstallPlugin,
+  handleUninstallPreview,
+  handleUpdatePlugin,
+} from "./routes/plugins";
+import {
+  handleRuntimeBlocks,
+  handleRuntimeContentTypes,
+  handleRuntimeNavigation,
+  handleRuntimePermissions,
+  handleRuntimePlugins,
+  handleRuntimeRefresh,
+  handleRuntimeRoutes,
+  handleRuntimeSettings,
+  handleRuntimeSync,
+} from "./routes/runtime";
 import {
   handleEditorBlocks,
   handleThemeSettings,
@@ -128,7 +147,22 @@ const ROUTES: RouteDefinition[] = [
 
   staticRoute("GET", "/api/content/types", (_request, env) => handleContentTypes(env)),
   staticRoute("GET", "/api/plugins", (_request, env) => handlePlugins(env)),
+  paramRoute("GET", "/api/plugins/:id/resources", handleGetPluginResources),
+  paramRoute("POST", "/api/plugins/:id/enable", handleEnablePlugin),
+  paramRoute("POST", "/api/plugins/:id/disable", handleDisablePlugin),
+  paramRoute("POST", "/api/plugins/:id/uninstall-preview", handleUninstallPreview),
+  paramRoute("POST", "/api/plugins/:id/uninstall", handleUninstallPlugin),
   paramRoute("PUT", "/api/plugins/:id", handleUpdatePlugin),
+
+  staticRoute("GET", "/api/runtime/plugins", (_request, env) => handleRuntimePlugins(env)),
+  staticRoute("GET", "/api/runtime/content-types", (_request, env) => handleRuntimeContentTypes(env)),
+  staticRoute("GET", "/api/runtime/blocks", (_request, env) => handleRuntimeBlocks(env)),
+  staticRoute("GET", "/api/runtime/routes", (_request, env) => handleRuntimeRoutes(env)),
+  staticRoute("GET", "/api/runtime/navigation", (_request, env) => handleRuntimeNavigation(env)),
+  staticRoute("GET", "/api/runtime/settings", (_request, env) => handleRuntimeSettings(env)),
+  staticRoute("GET", "/api/runtime/permissions", (_request, env) => handleRuntimePermissions(env)),
+  staticRoute("POST", "/api/runtime/refresh", handleRuntimeRefresh),
+  staticRoute("POST", "/api/runtime/sync", handleRuntimeSync),
   staticRoute("GET", "/api/theme/settings", (_request, env) => handleThemeSettings(env)),
   staticRoute("PUT", "/api/theme/settings", handleUpdateThemeSettings),
   staticRoute("GET", "/api/editor/blocks", (_request, env) => handleEditorBlocks(env)),

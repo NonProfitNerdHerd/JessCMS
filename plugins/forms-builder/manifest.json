@@ -3,9 +3,38 @@
   "name": "Forms Builder",
   "version": "0.1.0",
   "description": "Build contact forms, surveys, and lead capture forms with submissions inbox.",
+  "author": "JessCMS",
+  "homepage": "https://github.com/ike-j-rebout/JessCMS",
+  "minimum_jesscms_version": "0.9.0",
   "enabled": true,
-  "admin_routes": [
-    { "path": "/forms", "label": "Forms", "icon": "form" }
+  "kind": "required",
+  "permissions": [
+    "forms:read",
+    "forms:create",
+    "forms:update",
+    "forms:delete",
+    "forms:submissions:read",
+    "forms:submissions:update"
+  ],
+  "content_types": [
+    {
+      "type_key": "form",
+      "label": "Form",
+      "plural_label": "Forms",
+      "description": "Forms builder entries (admin-managed, embeddable)",
+      "source": "plugin",
+      "enabled": true,
+      "supports_json": false,
+      "supports_html": false,
+      "supports_revisions": false,
+      "supports_workflow": false,
+      "supports_seo": false,
+      "supports_featured_image": false,
+      "supports_author": true,
+      "supports_public_routes": false,
+      "admin_base": "/admin/forms",
+      "icon": "📋"
+    }
   ],
   "api_routes": [
     { "method": "GET", "path": "/forms", "handler": "listForms" },
@@ -23,12 +52,21 @@
       "category": "forms"
     }
   ],
-  "permissions": [
-    "forms:read",
-    "forms:create",
-    "forms:update",
-    "forms:delete",
-    "forms:submissions:read",
-    "forms:submissions:update"
-  ]
+  "resources": [
+    { "resource_type": "table", "resource_name": "forms", "table_name": "forms", "ownership_type": "owns", "cleanup_policy": "retain" },
+    { "resource_type": "table", "resource_name": "form_fields", "table_name": "form_fields", "ownership_type": "owns", "cleanup_policy": "delete" },
+    { "resource_type": "table", "resource_name": "form_submissions", "table_name": "form_submissions", "ownership_type": "owns", "cleanup_policy": "archive" }
+  ],
+  "settings_pages": [
+    {
+      "slug": "forms",
+      "label": "Forms",
+      "icon": "📋",
+      "permission": "forms:read"
+    }
+  ],
+  "cleanup_policy": "retain",
+  "database": {
+    "tables": ["forms", "form_fields", "form_submissions"]
+  }
 }

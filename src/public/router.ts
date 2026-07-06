@@ -10,6 +10,8 @@ import {
   listPublishedPosts,
   searchPublishedContent,
 } from "./queries";
+import { lookupPublishedByRoutePath } from "../content-index/repository";
+import type { ContentIndexRecord } from "../foundation/types";
 import type { PublicView } from "./types";
 import { isReservedPageSlug, normalizeTemplate } from "../theme/seo";
 import type { ThemeSettings } from "../theme/settings";
@@ -178,6 +180,11 @@ export async function resolvePublicView(
     };
   }
 
+  const indexedView = await resolveViewFromContentIndex(env, pathname);
+  if (indexedView) {
+    return indexedView;
+  }
+
   if (segments.length === 1 && !isReservedPageSlug(segments[0])) {
     const pageRecord = await getPublishedPageBySlug(env.DB, segments[0]);
     if (!pageRecord) return notFoundView();
@@ -198,6 +205,55 @@ function notFoundView(): PublicView {
     template: "default",
     seo: stubSeo(),
   };
+}
+
+async function resolveViewFromContentIndex(
+  env: Env,
+  pathname: string,
+): Promise<PublicView | null> {
+  const indexed = await lookupPublishedByRoutePath(env.DB, pathname);
+  if (!indexed) return null;
+  return resolveIndexedRecord(env, indexed);
+}
+
+async function resolveIndexedRecord(
+  env: Env,
+  indexed: ContentIndexRecord,
+): Promise<PublicView | null> {
+  switch (indexed.content_type) {
+    case "page": {
+      const page = await getPublishedPageBySlug(env.DB, indexed.slug);
+      if (!page) return null;
+      return {
+        kind: indexed.slug === "home" ? "home" : "page",
+        template: normalizeTemplate(page.template),
+        seo: stubSeo(),
+        page,
+      };
+    }
+    case "post": {
+      const post = await getPublishedPostBySlug(env.DB, indexed.slug);
+      if (!post) return null;
+      return {
+        kind: "post",
+        template: normalizeTemplate(post.template),
+        seo: stubSeo(),
+        post,
+      };
+    }
+    case "event": {
+      const event = await getPublishedEventBySlug(env.DB, indexed.slug);
+      if (!event) return null;
+      return {
+        kind: "event",
+        template: normalizeTemplate(event.template),
+        seo: stubSeo(),
+        event,
+      };
+    }
+    default:
+      return null;
+  }
 }
 
 export function errorView(_settings: ThemeSettings, _url: URL): PublicView {

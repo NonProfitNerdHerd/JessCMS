@@ -1034,47 +1034,134 @@ async function initPluginsPage() {
 
   const tbody = document.getElementById("plugins-table-body");
   const errorEl = document.getElementById("plugins-error");
+  const successEl = document.getElementById("plugins-success");
+  const previewPanel = document.getElementById("plugin-uninstall-panel");
+  const previewEl = document.getElementById("plugin-uninstall-preview");
+  let selectedPluginId = null;
 
   try {
     const result = await api("/api/plugins");
     const items = result.items ?? [];
 
     tbody.innerHTML = items
-      .map(
-        (plugin) => `
+      .map((plugin) => {
+        const statusParts = [
+          plugin.enabled ? "Enabled" : "Disabled",
+          plugin.missing_dependencies?.length
+            ? `Missing: ${plugin.missing_dependencies.join(", ")}`
+            : null,
+          plugin.needs_migration ? "Needs migration" : null,
+          plugin.upgrade_available ? "Upgrade available" : null,
+        ].filter(Boolean);
+        const registered = [
+          `${plugin.registered_content_types ?? 0} types`,
+          `${plugin.registered_blocks ?? 0} blocks`,
+          `${plugin.registered_routes ?? 0} routes`,
+          `${plugin.resource_count ?? 0} resources`,
+        ].join(" · ");
+        return `
           <tr>
             <td>${escapeHtml(plugin.name)}</td>
             <td><code>${escapeHtml(plugin.id)}</code></td>
             <td>${escapeHtml(plugin.version)}</td>
+            <td>${escapeHtml(statusParts.join(" · ") || plugin.lifecycle_state_label || "—")}</td>
+            <td class="muted">${escapeHtml(registered)}</td>
             <td>${escapeHtml(plugin.description)}</td>
-            <td>
-              <label>
-                <input type="checkbox" data-plugin-id="${escapeHtml(plugin.id)}" ${plugin.enabled ? "checked" : ""}>
-                Enabled
-              </label>
+            <td class="plugin-actions">
+              <button type="button" class="btn btn-secondary btn-sm" data-plugin-enable="${escapeHtml(plugin.id)}" ${plugin.enabled ? "disabled" : ""}>Enable</button>
+              <button type="button" class="btn btn-secondary btn-sm" data-plugin-disable="${escapeHtml(plugin.id)}" ${plugin.enabled ? "" : "disabled"}>Disable</button>
+              <button type="button" class="btn btn-secondary btn-sm" data-plugin-preview="${escapeHtml(plugin.id)}">Uninstall preview</button>
             </td>
           </tr>
-        `,
-      )
+        `;
+      })
       .join("");
 
-    tbody.querySelectorAll("input[type=checkbox]").forEach((checkbox) => {
-      checkbox.addEventListener("change", async () => {
+    tbody.querySelectorAll("[data-plugin-enable]").forEach((button) => {
+      button.addEventListener("click", async () => {
         hideError(errorEl);
+        hideError(successEl);
         try {
-          await api(`/api/plugins/${checkbox.dataset.pluginId}`, {
-            method: "PUT",
-            body: JSON.stringify({ enabled: checkbox.checked }),
+          await api(`/api/plugins/${button.getAttribute("data-plugin-enable")}/enable`, {
+            method: "POST",
           });
+          showSuccess(successEl, "Plugin enabled.");
+          initPluginsPage();
         } catch (error) {
-          checkbox.checked = !checkbox.checked;
+          showError(errorEl, error.message);
+        }
+      });
+    });
+
+    tbody.querySelectorAll("[data-plugin-disable]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        hideError(errorEl);
+        hideError(successEl);
+        try {
+          await api(`/api/plugins/${button.getAttribute("data-plugin-disable")}/disable`, {
+            method: "POST",
+          });
+          showSuccess(successEl, "Plugin disabled.");
+          initPluginsPage();
+        } catch (error) {
+          showError(errorEl, error.message);
+        }
+      });
+    });
+
+    tbody.querySelectorAll("[data-plugin-preview]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        hideError(errorEl);
+        hideError(successEl);
+        selectedPluginId = button.getAttribute("data-plugin-preview");
+        try {
+          const preview = await api(`/api/plugins/${selectedPluginId}/uninstall-preview`, {
+            method: "POST",
+          });
+          previewPanel?.classList.remove("hidden");
+          if (previewEl) {
+            const resources = (preview.resources ?? [])
+              .map(
+                (resource) =>
+                  `<li><code>${escapeHtml(resource.resource_type)}</code> ${escapeHtml(resource.resource_name)}${resource.affected_count != null ? ` (${resource.affected_count} rows)` : ""} · ${escapeHtml(resource.cleanup_policy)}</li>`,
+              )
+              .join("");
+            previewEl.innerHTML = `
+              <p><strong>${escapeHtml(preview.plugin_name)}</strong> (${escapeHtml(preview.lifecycle_state)})</p>
+              ${preview.warnings?.length ? `<ul>${preview.warnings.map((w) => `<li>${escapeHtml(w)}</li>`).join("")}</ul>` : ""}
+              <ul>${resources || "<li>No tracked resources</li>"}</ul>`;
+          }
+        } catch (error) {
+          showError(errorEl, error.message);
+        }
+      });
+    });
+
+    previewPanel?.querySelectorAll("[data-uninstall-mode]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        if (!selectedPluginId) return;
+        const mode = button.getAttribute("data-uninstall-mode");
+        if (mode === "uninstall_delete" && !confirm("Delete plugin-owned entity data? This cannot be undone.")) {
+          return;
+        }
+        hideError(errorEl);
+        hideError(successEl);
+        try {
+          await api(`/api/plugins/${selectedPluginId}/uninstall`, {
+            method: "POST",
+            body: JSON.stringify({ mode }),
+          });
+          showSuccess(successEl, `Plugin action completed (${mode}).`);
+          previewPanel?.classList.add("hidden");
+          initPluginsPage();
+        } catch (error) {
           showError(errorEl, error.message);
         }
       });
     });
   } catch (error) {
     showError(errorEl, error.message);
-    tbody.innerHTML = `<tr><td colspan="5" class="muted">Failed to load plugins.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" class="muted">Failed to load plugins.</td></tr>`;
   }
 }
 

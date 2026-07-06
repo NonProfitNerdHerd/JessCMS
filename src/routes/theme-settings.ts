@@ -4,7 +4,8 @@ import {
   badRequest,
   ok,
 } from "../lib/response";
-import { DEFAULT_THEME_SETTINGS, getRegisteredBlocks } from "../foundation/registry";
+import { DEFAULT_THEME_SETTINGS } from "../foundation/registry";
+import { getRuntime } from "../runtime/sync";
 
 const THEME_KEYS = [
   "theme_name",
@@ -115,13 +116,15 @@ export async function handleThemeSettings(env: Env): Promise<Response> {
   });
 }
 
-export async function handleEditorBlocks(_env: Env): Promise<Response> {
-  const registry = getRegisteredBlocks();
+export async function handleEditorBlocks(env: Env): Promise<Response> {
+  const snapshot = await getRuntime(env);
+  const core = snapshot.blocks.filter((block) => block.plugin_id === "jesscms-core");
+  const from_plugins = snapshot.blocks.filter((block) => block.plugin_id !== "jesscms-core");
 
   return ok({
-    items: registry.all,
-    core: registry.core,
-    from_plugins: registry.from_plugins,
-    count: registry.all.length,
+    items: snapshot.blocks,
+    core,
+    from_plugins,
+    count: snapshot.blocks.length,
   });
 }

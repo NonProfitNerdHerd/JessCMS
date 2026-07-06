@@ -11,6 +11,12 @@ import {
   validateEventInput,
 } from "../lib/validation";
 import { getClientIp, resolveAuditAction, writeAuditLog } from "../db/audit";
+import {
+  removeContentIndexEntry,
+  syncEventToContentIndex,
+  syncPageToContentIndex,
+  syncPostToContentIndex,
+} from "../content-index/repository";
 import { createContentRevision } from "../revisions/repository";
 import {
   ensureWorkflowState,
@@ -317,6 +323,8 @@ export async function createPage(
     (input as { change_summary?: string }).change_summary ?? "Initial version",
   );
 
+  await syncPageToContentIndex(env.DB, created!);
+
   return created!;
 }
 
@@ -380,6 +388,8 @@ export async function createPost(
     user.id,
     (input as { change_summary?: string }).change_summary ?? "Initial version",
   );
+
+  await syncPostToContentIndex(env.DB, created!);
 
   return created!;
 }
@@ -457,6 +467,8 @@ export async function createEvent(
     user.id,
     (input as { change_summary?: string }).change_summary ?? "Initial version",
   );
+
+  await syncEventToContentIndex(env.DB, created!);
 
   return created!;
 }
@@ -568,6 +580,10 @@ async function updateRecord<T extends ContentRecord>(
     typeof input.change_summary === "string" ? input.change_summary : "Content updated";
   await createContentRevision(env.DB, tableToEntityType(table), id, user.id, changeSummary);
 
+  if (table === "pages") await syncPageToContentIndex(env.DB, updated!);
+  if (table === "posts") await syncPostToContentIndex(env.DB, updated!);
+  if (table === "events") await syncEventToContentIndex(env.DB, updated!);
+
   return updated!;
 }
 
@@ -648,6 +664,8 @@ export async function deleteContent(
   }
 
   await env.DB.prepare(`DELETE FROM ${table} WHERE id = ?`).bind(id).run();
+
+  await removeContentIndexEntry(env.DB, tableToEntityType(table), id);
 
   await writeAuditLog(env.DB, {
     actorId: user.id,

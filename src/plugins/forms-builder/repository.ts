@@ -1,5 +1,10 @@
 import { generateId } from "../../lib/crypto";
 import {
+  removeContentIndexEntry,
+  syncFormToContentIndex,
+} from "../../content-index/repository";
+import { registerPluginResource } from "../../plugins/resources";
+import {
   FIELD_TYPES,
   FORM_STATUSES,
   parseFieldOptions,
@@ -205,6 +210,17 @@ export async function createForm(
 
   const created = await getFormWithFields(db, { id });
   if (!created) throw new Error("Failed to create form");
+
+  await syncFormToContentIndex(db, created);
+  await registerPluginResource(db, "forms-builder", {
+    resource_type: "entity",
+    resource_name: "form",
+    table_name: "forms",
+    entity_id: id,
+    ownership_type: "owns",
+    cleanup_policy: "retain",
+  });
+
   return created;
 }
 
@@ -265,6 +281,8 @@ export async function updateForm(
 
   const updated = await getFormWithFields(db, { id });
   if (!updated) throw new NotFoundError();
+
+  await syncFormToContentIndex(db, updated);
   return updated;
 }
 
@@ -272,6 +290,7 @@ export async function deleteForm(db: D1Database, id: string): Promise<void> {
   const existing = await getFormById(db, id);
   if (!existing) throw new NotFoundError();
   await db.prepare("DELETE FROM forms WHERE id = ?").bind(id).run();
+  await removeContentIndexEntry(db, "form", id);
 }
 
 export async function createFormField(

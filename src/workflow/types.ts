@@ -1,4 +1,4 @@
-export type ContentEntityType = "page" | "post" | "event";
+export type ContentEntityType = string;
 
 export type WorkflowState =
   | "draft"
@@ -59,7 +59,7 @@ export interface WorkflowUpdateInput {
 
 export function entityTypeToTable(
   entityType: ContentEntityType,
-): "pages" | "posts" | "events" {
+): "pages" | "posts" | "events" | "forms" {
   switch (entityType) {
     case "page":
       return "pages";
@@ -67,11 +67,15 @@ export function entityTypeToTable(
       return "posts";
     case "event":
       return "events";
+    case "form":
+      return "forms";
+    default:
+      throw new Error(`Unknown content entity type: ${entityType}`);
   }
 }
 
 export function tableToEntityType(
-  table: "pages" | "posts" | "events",
+  table: "pages" | "posts" | "events" | "forms",
 ): ContentEntityType {
   switch (table) {
     case "pages":
@@ -80,6 +84,8 @@ export function tableToEntityType(
       return "post";
     case "events":
       return "event";
+    case "forms":
+      return "form";
   }
 }
 

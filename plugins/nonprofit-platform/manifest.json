@@ -1,0 +1,128 @@
+{
+  "id": "nonprofit-platform",
+  "name": "Nonprofit Platform",
+  "version": "0.1.0",
+  "description": "Nonprofit vertical content types: volunteers, board members, programs, campaigns, and donations.",
+  "author": "JessCMS",
+  "homepage": "https://github.com/ike-j-rebout/JessCMS",
+  "minimum_jesscms_version": "0.9.0",
+  "enabled": false,
+  "kind": "plugin",
+  "dependencies": [
+    { "plugin_id": "forms-builder" }
+  ],
+  "permissions": [
+    "nonprofit.volunteer.read",
+    "nonprofit.volunteer.write",
+    "nonprofit.board.read",
+    "nonprofit.program.read",
+    "nonprofit.campaign.read",
+    "nonprofit.donation.read"
+  ],
+  "content_types": [
+    {
+      "type_key": "volunteer",
+      "label": "Volunteer",
+      "plural_label": "Volunteers",
+      "description": "Volunteer profiles and assignments",
+      "source": "plugin",
+      "enabled": true,
+      "supports_json": true,
+      "supports_html": false,
+      "supports_revisions": false,
+      "supports_workflow": false,
+      "supports_seo": false,
+      "supports_public_routes": false,
+      "admin_base": "/admin/volunteers",
+      "icon": "🤝"
+    },
+    {
+      "type_key": "board_member",
+      "label": "Board Member",
+      "plural_label": "Board Members",
+      "description": "Board of directors roster",
+      "source": "plugin",
+      "enabled": true,
+      "supports_json": true,
+      "supports_html": true,
+      "supports_revisions": true,
+      "supports_workflow": true,
+      "supports_seo": true,
+      "supports_featured_image": true,
+      "supports_public_routes": true,
+      "route_base": "/board",
+      "admin_base": "/admin/board-members",
+      "icon": "🏛"
+    },
+    {
+      "type_key": "program",
+      "label": "Program",
+      "plural_label": "Programs",
+      "description": "Nonprofit programs and services",
+      "source": "plugin",
+      "enabled": true,
+      "supports_json": true,
+      "supports_html": true,
+      "supports_revisions": true,
+      "supports_workflow": true,
+      "supports_seo": true,
+      "supports_featured_image": true,
+      "supports_public_routes": true,
+      "route_base": "/programs",
+      "admin_base": "/admin/programs",
+      "icon": "📚"
+    },
+    {
+      "type_key": "campaign",
+      "label": "Campaign",
+      "plural_label": "Campaigns",
+      "description": "Fundraising and awareness campaigns",
+      "source": "plugin",
+      "enabled": true,
+      "supports_json": true,
+      "supports_html": true,
+      "supports_revisions": true,
+      "supports_workflow": true,
+      "supports_seo": true,
+      "supports_featured_image": true,
+      "supports_public_routes": true,
+      "route_base": "/campaigns",
+      "admin_base": "/admin/campaigns",
+      "icon": "📣"
+    },
+    {
+      "type_key": "donation",
+      "label": "Donation",
+      "plural_label": "Donations",
+      "description": "Donation records (metadata only in this phase)",
+      "source": "plugin",
+      "enabled": true,
+      "supports_json": true,
+      "supports_html": false,
+      "supports_revisions": false,
+      "supports_workflow": false,
+      "supports_seo": false,
+      "supports_public_routes": false,
+      "admin_base": "/admin/donations",
+      "icon": "💝"
+    }
+  ],
+  "navigation": {
+    "sections": [
+      { "id": "nonprofit", "label": "Nonprofit", "sort_order": 16 }
+    ],
+    "items": [
+      { "section_id": "nonprofit", "label": "Programs", "href": "/admin/programs", "icon": "📚", "sort_order": 10, "permission": "nonprofit.program.read" },
+      { "section_id": "nonprofit", "label": "Campaigns", "href": "/admin/campaigns", "icon": "📣", "sort_order": 20, "permission": "nonprofit.campaign.read" }
+    ]
+  },
+  "settings_pages": [
+    {
+      "slug": "nonprofit",
+      "label": "Nonprofit",
+      "icon": "🤝",
+      "permission": "settings:read"
+    }
+  ],
+  "cleanup_policy": "retain"
+}

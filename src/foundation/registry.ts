@@ -2,20 +2,13 @@ import coreEvents from "../../plugins/core-events/manifest.json";
 import coreMedia from "../../plugins/core-media/manifest.json";
 import coreSeo from "../../plugins/core-seo/manifest.json";
 import formsBuilder from "../../plugins/forms-builder/manifest.json";
+import nonprofitPlatform from "../../plugins/nonprofit-platform/manifest.json";
 import stormChaserExample from "../../plugins/storm-chaser-example/manifest.json";
+import stormPlatform from "../../plugins/storm-platform/manifest.json";
+import { validateAllPluginManifests } from "./manifest-validation";
+import type { PluginManifest } from "./types";
 
-export interface PluginManifest {
-  id: string;
-  name: string;
-  version: string;
-  description: string;
-  enabled: boolean;
-  admin_routes?: Array<{ path: string; label: string; icon: string }>;
-  api_routes?: Array<{ method: string; path: string; handler: string }>;
-  blocks?: Array<{ type: string; label: string; category: string; block_type?: string }>;
-  settings_schema?: Record<string, unknown>;
-  permissions?: string[];
-}
+export type { PluginManifest } from "./types";
 
 export const PLUGIN_MANIFESTS: PluginManifest[] = [
   coreEvents as PluginManifest,
@@ -23,7 +16,11 @@ export const PLUGIN_MANIFESTS: PluginManifest[] = [
   coreSeo as PluginManifest,
   formsBuilder as PluginManifest,
   stormChaserExample as PluginManifest,
+  stormPlatform as PluginManifest,
+  nonprofitPlatform as PluginManifest,
 ];
+
+validateAllPluginManifests();
 
 export const CONTENT_TYPES = [
   {
