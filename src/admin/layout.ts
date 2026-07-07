@@ -113,6 +113,9 @@ ${blockStyles}</head>
           <p class="admin-user-label">Signed in as <a class="admin-user-link" href="/admin/profile">${userLabel}</a></p>
         </div>
         <div class="admin-header-actions">
+          <form class="admin-header-search" action="/admin/search" method="get">
+            <input type="search" name="q" class="input admin-header-search-input" placeholder="Search…" aria-label="Search">
+          </form>
           <button type="button" class="btn btn-secondary" id="logout-btn">Logout</button>
         </div>
       </header>

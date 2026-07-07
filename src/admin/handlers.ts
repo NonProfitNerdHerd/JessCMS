@@ -18,8 +18,32 @@ import {
   renderAdminPage,
   type AdminPageOptions,
 } from "./layout";
+import {
+  auditListShell,
+  forbiddenShell,
+  roleEditShell,
+  rolesListShell,
+  usersFormShell,
+  usersListShell,
+} from "./system-pages";
 
 type AdminNavigation = AdminNavSection[];
+
+function renderForbiddenPage(
+  user: NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>,
+  navSections: AdminNavigation,
+  message = "You do not have permission to view this page.",
+): Response {
+  return htmlResponse(
+    renderAdminPage({
+      title: "Forbidden",
+      page: "forbidden",
+      user,
+      navSections,
+      content: forbiddenShell(message),
+    }),
+  );
+}
 
 const PUBLIC_ADMIN_PATHS = new Set(["/admin/login"]);
 
@@ -195,6 +219,39 @@ function renderLoginPage(): string {
       </div>
     `,
   });
+}
+
+function renderSearchPage(): string {
+  return `
+    <div id="search-error" class="alert alert-error hidden"></div>
+    <form id="admin-search-form" class="admin-search-form">
+      <div class="admin-toolbar admin-search-toolbar">
+        <input type="search" name="q" class="input" placeholder="Search all content and media" autofocus>
+        <select name="content_type" class="select">
+          <option value="">All types</option>
+          <option value="page">Pages</option>
+          <option value="post">Posts</option>
+          <option value="event">Events</option>
+          <option value="form">Forms</option>
+          <option value="media">Media</option>
+        </select>
+        <select name="status" class="select">
+          <option value="">All statuses</option>
+          <option value="draft">Draft</option>
+          <option value="published">Published</option>
+          <option value="scheduled">Scheduled</option>
+          <option value="archived">Archived</option>
+        </select>
+        <label class="checkbox-inline">
+          <input type="checkbox" name="include_media" value="1"> Include media
+        </label>
+        <button type="submit" class="btn btn-primary">Search</button>
+      </div>
+    </form>
+    <div id="search-results" class="admin-search-results">
+      <p class="muted">Enter a query to search across all content types.</p>
+    </div>
+  `;
 }
 
 function renderDashboard(
@@ -487,6 +544,18 @@ export async function handleAdminRequest(
 
   const navSections = await getAdminNavigation(env, user);
 
+  if (pathname === "/admin/search") {
+    return htmlResponse(
+      renderAdminPage({
+        title: "Search",
+        page: "search",
+        user,
+        navSections,
+        content: renderSearchPage(),
+      }),
+    );
+  }
+
   if (pathname === "/admin/dashboard") {
     return htmlResponse(renderDashboard(user, navSections));
   }
@@ -719,6 +788,100 @@ export async function handleAdminRequest(
 
   if (pathname === "/admin/profile") {
     return htmlResponse(renderProfilePage(user, navSections));
+  }
+
+  if (pathname === "/admin/users") {
+    if (!userHasPermission(user.permissions, "users:read")) {
+      return renderForbiddenPage(user, navSections);
+    }
+    return htmlResponse(
+      renderAdminPage({
+        title: "Users",
+        page: "users-list",
+        user,
+        navSections,
+        content: usersListShell(),
+      }),
+    );
+  }
+
+  if (pathname === "/admin/users/new") {
+    if (!userHasPermission(user.permissions, "users:create")) {
+      return renderForbiddenPage(user, navSections);
+    }
+    return htmlResponse(
+      renderAdminPage({
+        title: "New user",
+        page: "users-new",
+        user,
+        navSections,
+        content: usersFormShell(true),
+      }),
+    );
+  }
+
+  const userEdit = pathname.match(/^\/admin\/users\/([^/]+)$/);
+  if (userEdit && userEdit[1] !== "new") {
+    if (!userHasPermission(user.permissions, "users:read")) {
+      return renderForbiddenPage(user, navSections);
+    }
+    return htmlResponse(
+      renderAdminPage({
+        title: "Edit user",
+        page: "users-edit",
+        user,
+        navSections,
+        data: { id: userEdit[1] },
+        content: usersFormShell(false),
+      }),
+    );
+  }
+
+  if (pathname === "/admin/roles") {
+    if (!userHasPermission(user.permissions, "roles:read")) {
+      return renderForbiddenPage(user, navSections);
+    }
+    return htmlResponse(
+      renderAdminPage({
+        title: "Roles",
+        page: "roles-list",
+        user,
+        navSections,
+        content: rolesListShell(),
+      }),
+    );
+  }
+
+  const roleEdit = pathname.match(/^\/admin\/roles\/([^/]+)$/);
+  if (roleEdit) {
+    if (!userHasPermission(user.permissions, "roles:read")) {
+      return renderForbiddenPage(user, navSections);
+    }
+    return htmlResponse(
+      renderAdminPage({
+        title: "Edit role",
+        page: "roles-edit",
+        user,
+        navSections,
+        data: { id: roleEdit[1] },
+        content: roleEditShell(),
+      }),
+    );
+  }
+
+  if (pathname === "/admin/audit") {
+    if (!userHasPermission(user.permissions, "audit:read")) {
+      return renderForbiddenPage(user, navSections);
+    }
+    return htmlResponse(
+      renderAdminPage({
+        title: "Audit log",
+        page: "audit-list",
+        user,
+        navSections,
+        content: auditListShell(),
+      }),
+    );
   }
 
   const genericList = pathname.match(/^\/admin\/content\/([^/]+)$/);

@@ -18,6 +18,7 @@ import {
 import { uploadMediaToR2 } from "../media/upload";
 import { getMediaStorageProvider, getR2Bucket } from "../media/storage";
 import { enrichMediaRecord } from "./media-serve";
+import { indexMediaFromRow, removeFromIndex } from "../search/indexer";
 import {
   badRequest,
   created,
@@ -131,6 +132,8 @@ export async function handleCreateMedia(request: Request, env: Env): Promise<Res
       metadata: { title: item.title, public_url: item.public_url, storage_provider: "url" },
     });
 
+    await indexMediaFromRow(env.DB, item);
+
     return created(await enrichMediaRecord(item, env, requestOrigin(request)));
   } catch (error) {
     return handleMediaError(error);
@@ -176,6 +179,8 @@ export async function handleUploadMedia(request: Request, env: Env): Promise<Res
       },
     });
 
+    await indexMediaFromRow(env.DB, item);
+
     return created(await enrichMediaRecord(item, env, requestOrigin(request)));
   } catch (error) {
     return handleMediaError(error);
@@ -209,6 +214,8 @@ export async function handleUpdateMedia(
       entityId: item.id,
       ipAddress: getClientIp(request),
     });
+
+    await indexMediaFromRow(env.DB, item);
 
     return ok(await enrichMediaRecord(item, env, requestOrigin(request)));
   } catch (error) {
@@ -248,6 +255,7 @@ export async function handleDeleteMedia(
     }
 
     await deleteMedia(env.DB, params.id);
+    await removeFromIndex(env.DB, "media", params.id);
 
     await writeAuditLog(env.DB, {
       actorId: authResult.id,

@@ -71,6 +71,11 @@ import {
   handleUploadMedia,
 } from "./routes/media";
 import { handleServeMediaFile } from "./routes/media-serve";
+import {
+  handleAdminSearch,
+  handlePublicSearch,
+  handleRebuildSearchIndex,
+} from "./routes/search";
 import { registerFormsBuilderPlugin } from "./plugins/forms-builder";
 import {
   handleCreateForm,
@@ -109,6 +114,23 @@ import {
   handleUpdatePageWorkflow,
   handleUpdatePostWorkflow,
 } from "./routes/workflow-revisions";
+import { handleListAuditLogs } from "./routes/audit";
+import {
+  handleCreateRole,
+  handleGetRole,
+  handleListPermissions,
+  handleListRoles,
+  handleUpdateRole,
+} from "./routes/roles";
+import {
+  handleCreateUser,
+  handleDisableUser,
+  handleEnableUser,
+  handleGetUser,
+  handleListUsers,
+  handleResetUserPassword,
+  handleUpdateUser,
+} from "./routes/users";
 import { handlePublicRequest } from "./public/handler";
 import { serverError } from "./lib/response";
 
@@ -121,6 +143,36 @@ const ROUTES: RouteDefinition[] = [
   staticRoute("POST", "/api/auth/logout", handleLogout),
   staticRoute("GET", "/api/auth/me", handleMe),
   staticRoute("PUT", "/api/auth/profile", handleUpdateProfile),
+
+  staticRoute("GET", "/api/users", handleListUsers),
+  paramRoute("GET", "/api/users/:id", (request, env, params) =>
+    handleGetUser(request, env, params.id),
+  ),
+  staticRoute("POST", "/api/users", handleCreateUser),
+  paramRoute("PUT", "/api/users/:id", (request, env, params) =>
+    handleUpdateUser(request, env, params.id),
+  ),
+  paramRoute("POST", "/api/users/:id/disable", (request, env, params) =>
+    handleDisableUser(request, env, params.id),
+  ),
+  paramRoute("POST", "/api/users/:id/enable", (request, env, params) =>
+    handleEnableUser(request, env, params.id),
+  ),
+  paramRoute("POST", "/api/users/:id/reset-password", (request, env, params) =>
+    handleResetUserPassword(request, env, params.id),
+  ),
+
+  staticRoute("GET", "/api/roles", handleListRoles),
+  staticRoute("GET", "/api/permissions", handleListPermissions),
+  paramRoute("GET", "/api/roles/:id", (request, env, params) =>
+    handleGetRole(request, env, params.id),
+  ),
+  staticRoute("POST", "/api/roles", handleCreateRole),
+  paramRoute("PUT", "/api/roles/:id", (request, env, params) =>
+    handleUpdateRole(request, env, params.id),
+  ),
+
+  staticRoute("GET", "/api/audit", handleListAuditLogs),
 
   staticRoute("GET", "/api/pages", handleListPages),
   paramRoute("GET", "/api/pages/:id/revisions/compare", handleComparePageRevisions),
@@ -196,6 +248,10 @@ const ROUTES: RouteDefinition[] = [
   staticRoute("GET", "/api/theme/settings", (_request, env) => handleThemeSettings(env)),
   staticRoute("PUT", "/api/theme/settings", handleUpdateThemeSettings),
   staticRoute("GET", "/api/editor/blocks", (_request, env) => handleEditorBlocks(env)),
+
+  staticRoute("GET", "/api/search", handlePublicSearch),
+  staticRoute("GET", "/api/search/admin", handleAdminSearch),
+  staticRoute("POST", "/api/search/rebuild", handleRebuildSearchIndex),
 
   staticRoute("GET", "/api/media", handleListMedia),
   staticRoute("POST", "/api/media/upload", handleUploadMedia),

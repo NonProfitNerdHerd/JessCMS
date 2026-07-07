@@ -1,3 +1,4 @@
+import { searchPublic } from "../search/query";
 import {
   countPublishedEvents,
   countPublishedPosts,
@@ -8,7 +9,6 @@ import {
   getTagBySlug,
   listPublishedEvents,
   listPublishedPosts,
-  searchPublishedContent,
 } from "./queries";
 import { lookupPublishedByRoutePath } from "../content-index/repository";
 import { getPublishedContentEntryById } from "../content-entries/repository";
@@ -169,14 +169,29 @@ export async function resolvePublicView(
 
   if (pathname === "/search") {
     const q = url.searchParams.get("q")?.trim() ?? "";
+    const contentType = url.searchParams.get("content_type") ?? undefined;
     const offset = (page - 1) * POSTS_PER_PAGE;
-    const { items, total } = await searchPublishedContent(env.DB, q, POSTS_PER_PAGE, offset);
+    const { items, total } = await searchPublic(env.DB, {
+      q,
+      content_type: contentType,
+      limit: POSTS_PER_PAGE,
+      offset,
+    });
     return {
       kind: "search",
       template: "default",
       seo: stubSeo(),
       searchQuery: q,
-      searchResults: items,
+      searchResults: items.map((item) => ({
+        kind: item.content_type,
+        id: item.source_id,
+        slug: item.slug,
+        title: item.title,
+        excerpt: item.snippet ?? item.excerpt,
+        url: item.url ?? "#",
+        content_type: item.content_type,
+        published_at: item.published_at,
+      })),
       pagination: paginate(total, page, POSTS_PER_PAGE),
     };
   }

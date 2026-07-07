@@ -29,6 +29,9 @@ export interface ContentTypeDefinition {
   supports_parent?: boolean;
   supports_archive?: boolean;
   supports_public_routes?: boolean;
+  supports_search?: boolean;
+  search_weight?: number;
+  search_fields_json?: Record<string, unknown> | null;
   route_base?: string | null;
   admin_base?: string | null;
   icon?: string | null;
@@ -122,6 +125,10 @@ export interface ContentIndexRecord {
   route_path: string | null;
   searchable_text: string | null;
   metadata_json: string | null;
+  excerpt: string | null;
+  featured_image_id: string | null;
+  search_weight: number | null;
+  indexed_at: string | null;
 }
 
 export interface PluginResourceRecord {

@@ -4,7 +4,8 @@ const CONTENT_TYPE_COLUMNS = `
   id, type_key, label, plural_label, description, source, plugin_id, enabled,
   supports_json, supports_html, supports_revisions, supports_workflow,
   supports_seo, supports_featured_image, supports_author, supports_parent,
-  supports_archive, supports_public_routes, route_base, admin_base, icon,
+  supports_archive, supports_public_routes, supports_search, search_weight,
+  search_fields_json, route_base, admin_base, icon,
   schema_json, settings_json, created_at, updated_at
 `;
 
@@ -30,6 +31,18 @@ function mapRow(row: Record<string, unknown>): ContentTypeRecord {
     supports_archive: row.supports_archive === 1 || row.supports_archive === true,
     supports_public_routes:
       row.supports_public_routes === 1 || row.supports_public_routes === true,
+    supports_search:
+      row.supports_search === undefined ||
+      row.supports_search === null ||
+      row.supports_search === 1 ||
+      row.supports_search === true,
+    search_weight:
+      row.search_weight === undefined || row.search_weight === null
+        ? 1
+        : Number(row.search_weight),
+    search_fields_json: row.search_fields_json
+      ? (JSON.parse(String(row.search_fields_json)) as Record<string, unknown>)
+      : null,
     route_base: (row.route_base as string | null) ?? null,
     admin_base: (row.admin_base as string | null) ?? null,
     icon: (row.icon as string | null) ?? null,

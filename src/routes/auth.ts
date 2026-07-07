@@ -4,9 +4,10 @@ import {
   findUserByEmail,
   findUserById,
   isAuthUser,
+  purgeExpiredSessions,
   requireAuth,
 } from "../auth";
-import { getClientIp, writeAuditLog } from "../db/audit";
+import { countRecentFailedLogins, getClientIp, writeAuditLog } from "../db/audit";
 import {
   buildSessionCookie,
   clearSessionCookie,
@@ -39,12 +40,49 @@ export async function handleLogin(request: Request, env: Env): Promise<Response>
       return badRequest("email and password are required");
     }
 
+    const ipAddress = getClientIp(request);
+    await purgeExpiredSessions(env.DB);
+
+    if (ipAddress) {
+      const failures = await countRecentFailedLogins(env.DB, ipAddress);
+      if (failures >= 10) {
+        return unauthorized("Too many failed login attempts. Try again later.");
+      }
+    }
+
     const user = await findUserByEmail(env.DB, email);
-    if (!user || !(await verifyPassword(password, user.password_hash))) {
+    const activeRow = user
+      ? await env.DB.prepare("SELECT is_active FROM users WHERE id = ?")
+          .bind(user.id)
+          .first<{ is_active: number | null }>()
+      : null;
+
+    if (
+      !user ||
+      activeRow?.is_active === 0 ||
+      !(await verifyPassword(password, user.password_hash))
+    ) {
+      await writeAuditLog(env.DB, {
+        actorId: user?.id ?? null,
+        action: "login_failed",
+        entityType: "auth",
+        entityId: email,
+        metadata: { email },
+        ipAddress,
+      });
       return unauthorized("Invalid email or password");
     }
 
     const session = await createSession(env.DB, user.id);
+
+    await writeAuditLog(env.DB, {
+      actorId: user.id,
+      action: "login",
+      entityType: "auth",
+      entityId: user.id,
+      metadata: { email: user.email },
+      ipAddress,
+    });
     const secure = isSecureRequest(request);
 
     return ok(
@@ -69,10 +107,21 @@ export async function handleLogin(request: Request, env: Env): Promise<Response>
 }
 
 export async function handleLogout(request: Request, env: Env): Promise<Response> {
+  const authResult = await requireAuth(request, env);
   const token = parseSessionToken(request);
 
   if (token) {
     await deleteSession(env.DB, token);
+  }
+
+  if (isAuthUser(authResult)) {
+    await writeAuditLog(env.DB, {
+      actorId: authResult.id,
+      action: "logout",
+      entityType: "auth",
+      entityId: authResult.id,
+      ipAddress: getClientIp(request),
+    });
   }
 
   return ok(

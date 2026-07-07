@@ -45,6 +45,16 @@ const PERMISSION_ALIASES: Record<string, string[]> = {
   "workflow:publish": ["workflow:publish", "content:publish", "content.publish"],
   "revisions:read": ["revisions:read"],
   "revisions:restore": ["revisions:restore"],
+  "users:read": ["users.manage", "users:read"],
+  "users:create": ["users.manage", "users:create"],
+  "users:update": ["users.manage", "users:update"],
+  "users:disable": ["users.manage", "users:disable"],
+  "users:reset_password": ["users.manage", "users:reset_password"],
+  "roles:read": ["users.manage", "roles:read"],
+  "roles:create": ["users.manage", "roles:create"],
+  "roles:update": ["users.manage", "roles:update"],
+  "permissions:read": ["users.manage", "permissions:read"],
+  "audit:read": ["users.manage", "audit:read"],
 };
 
 export async function getUserPermissions(
@@ -87,16 +97,27 @@ export async function getCurrentUser(
   const tokenHash = await hashSessionToken(token);
   const session = await env.DB.prepare(
     `
-      SELECT s.user_id, s.expires_at, u.id, u.email, u.name
+      SELECT s.user_id, s.expires_at, u.id, u.email, u.name, u.is_active
       FROM sessions s
       INNER JOIN users u ON u.id = s.user_id
       WHERE s.id = ?
     `,
   )
     .bind(tokenHash)
-    .first<{ user_id: string; expires_at: string; id: string; email: string; name: string | null }>();
+    .first<{
+      user_id: string;
+      expires_at: string;
+      id: string;
+      email: string;
+      name: string | null;
+      is_active: number | null;
+    }>();
 
-  if (!session || isSessionExpired(session.expires_at)) {
+  if (
+    !session ||
+    isSessionExpired(session.expires_at) ||
+    session.is_active === 0
+  ) {
     if (session) {
       await env.DB.prepare("DELETE FROM sessions WHERE id = ?").bind(tokenHash).run();
     }
@@ -188,6 +209,12 @@ export async function deleteSession(
 ): Promise<void> {
   const tokenHash = await hashSessionToken(token);
   await db.prepare("DELETE FROM sessions WHERE id = ?").bind(tokenHash).run();
+}
+
+export async function purgeExpiredSessions(db: D1Database): Promise<void> {
+  await db
+    .prepare("DELETE FROM sessions WHERE expires_at < datetime('now')")
+    .run();
 }
 
 export async function countUsers(db: D1Database): Promise<number> {

@@ -1405,6 +1405,408 @@ async function initPluginsPage() {
   }
 }
 
+async function initSearchPage() {
+  document.getElementById("logout-btn")?.addEventListener("click", logout);
+
+  const form = document.getElementById("admin-search-form");
+  const resultsEl = document.getElementById("search-results");
+  const errorEl = document.getElementById("search-error");
+  const params = new URLSearchParams(window.location.search);
+
+  if (params.get("q")) {
+    form.q.value = params.get("q");
+    if (params.get("content_type")) form.content_type.value = params.get("content_type");
+    if (params.get("status")) form.status.value = params.get("status");
+    if (params.get("include_media") === "1") form.include_media.checked = true;
+  }
+
+  async function runSearch() {
+    hideError(errorEl);
+    const query = form.q.value.trim();
+    if (!query) {
+      resultsEl.innerHTML = `<p class="muted">Enter a query to search across all content types.</p>`;
+      return;
+    }
+
+    const searchParams = new URLSearchParams({ q: query, limit: "50" });
+    if (form.content_type.value) searchParams.set("content_type", form.content_type.value);
+    if (form.status.value) searchParams.set("status", form.status.value);
+    if (form.include_media.checked) searchParams.set("include_media", "1");
+
+    history.replaceState(null, "", `/admin/search?${searchParams.toString()}`);
+    resultsEl.innerHTML = `<p class="muted">Searching…</p>`;
+
+    try {
+      const result = await api(`/api/search/admin?${searchParams.toString()}`);
+      const items = result.items ?? [];
+      if (items.length === 0) {
+        resultsEl.innerHTML = `<p class="muted">No results for “${escapeHtml(query)}”.</p>`;
+        return;
+      }
+
+      resultsEl.innerHTML = `
+        <p class="muted">${result.total ?? items.length} result(s)</p>
+        ${items
+          .map(
+            (item) => `
+              <article class="admin-search-item">
+                <div class="admin-search-item-main">
+                  <div class="admin-search-item-meta">
+                    <span class="admin-search-badge">${escapeHtml(item.content_type)}</span>
+                    <span class="admin-search-badge">${escapeHtml(item.status)}</span>
+                  </div>
+                  <h3><a href="${escapeHtml(item.admin_url)}">${escapeHtml(item.title)}</a></h3>
+                  ${item.snippet ? `<p class="muted">${escapeHtml(item.snippet)}</p>` : ""}
+                  <p class="muted">Updated ${escapeHtml(item.updated_at ?? "")}</p>
+                </div>
+                <a class="btn btn-secondary btn-sm" href="${escapeHtml(item.admin_url)}">Edit</a>
+              </article>
+            `,
+          )
+          .join("")}
+      `;
+    } catch (error) {
+      showError(errorEl, error.message);
+      resultsEl.innerHTML = `<p class="muted">Search failed.</p>`;
+    }
+  }
+
+  form?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    runSearch();
+  });
+
+  if (params.get("q")) {
+    runSearch();
+  }
+}
+
+async function loadRolesCheckboxes(container, selectedIds = []) {
+  const result = await api("/api/roles");
+  const roles = result.items ?? [];
+  container.innerHTML = roles
+    .map(
+      (role) => `
+        <label class="checkbox-row">
+          <input type="checkbox" name="role_ids" value="${escapeHtml(role.id)}" ${
+            selectedIds.includes(role.id) ? "checked" : ""
+          }>
+          ${escapeHtml(role.name)} <span class="muted">(${escapeHtml(role.slug)})</span>
+        </label>
+      `,
+    )
+    .join("");
+  return roles;
+}
+
+function selectedRoleIds(form) {
+  return [...form.querySelectorAll('input[name="role_ids"]:checked')].map((el) => el.value);
+}
+
+async function initUsersList() {
+  document.getElementById("logout-btn")?.addEventListener("click", logout);
+  const tbody = document.getElementById("users-table-body");
+  const errorEl = document.getElementById("users-error");
+
+  try {
+    const result = await api("/api/users");
+    const users = result.items ?? [];
+    if (users.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6" class="muted">No users yet.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = users
+      .map(
+        (user) => `
+          <tr>
+            <td>${escapeHtml(user.name || "—")}</td>
+            <td>${escapeHtml(user.email)}</td>
+            <td>${escapeHtml((user.roles ?? []).map((r) => r.name).join(", ") || "—")}</td>
+            <td>${user.is_active ? "Active" : "Disabled"}</td>
+            <td>${escapeHtml(formatDate(user.updated_at))}</td>
+            <td><a class="btn btn-secondary btn-sm" href="/admin/users/${escapeHtml(user.id)}">Edit</a></td>
+          </tr>
+        `,
+      )
+      .join("");
+  } catch (error) {
+    showError(errorEl, error.message);
+    tbody.innerHTML = `<tr><td colspan="6" class="muted">Failed to load users.</td></tr>`;
+  }
+}
+
+async function initUsersForm(isNew) {
+  document.getElementById("logout-btn")?.addEventListener("click", logout);
+  const form = document.getElementById("user-form");
+  const errorEl = document.getElementById("user-error");
+  const successEl = document.getElementById("user-success");
+  const rolesEl = document.getElementById("user-roles");
+  const userId = document.body.dataset.id;
+
+  const roles = await loadRolesCheckboxes(rolesEl, []);
+
+  if (!isNew && userId) {
+    try {
+      const user = await api(`/api/users/${userId}`);
+      form.name.value = user.name || "";
+      form.email.value = user.email || "";
+      const selected = (user.roles ?? []).map((r) => r.id);
+      await loadRolesCheckboxes(rolesEl, selected);
+
+      const toggleBtn = document.getElementById("user-toggle-active-btn");
+      toggleBtn.textContent = user.is_active ? "Disable user" : "Enable user";
+      toggleBtn.addEventListener("click", async () => {
+        hideError(errorEl);
+        hideSuccess(successEl);
+        try {
+          if (user.is_active) {
+            await api(`/api/users/${userId}/disable`, { method: "POST" });
+            showSuccess(successEl, "User disabled.");
+          } else {
+            await api(`/api/users/${userId}/enable`, { method: "POST" });
+            showSuccess(successEl, "User enabled.");
+          }
+          window.location.reload();
+        } catch (error) {
+          showError(errorEl, error.message);
+        }
+      });
+
+      document.getElementById("user-reset-password-btn")?.addEventListener("click", async () => {
+        const password = prompt("Enter a temporary password (min 12 characters):");
+        if (!password) return;
+        hideError(errorEl);
+        hideSuccess(successEl);
+        try {
+          await api(`/api/users/${userId}/reset-password`, {
+            method: "POST",
+            body: JSON.stringify({ password }),
+          });
+          showSuccess(successEl, "Password reset. User must sign in with the new password.");
+        } catch (error) {
+          showError(errorEl, error.message);
+        }
+      });
+    } catch (error) {
+      showError(errorEl, error.message);
+    }
+  }
+
+  form?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    hideError(errorEl);
+    hideSuccess(successEl);
+
+    const payload = {
+      name: form.name.value.trim(),
+      email: form.email.value.trim(),
+      role_ids: selectedRoleIds(form),
+    };
+
+    try {
+      if (isNew) {
+        payload.password = form.password.value;
+        await api("/api/users", { method: "POST", body: JSON.stringify(payload) });
+        window.location.href = "/admin/users";
+      } else {
+        await api(`/api/users/${userId}`, { method: "PUT", body: JSON.stringify(payload) });
+        showSuccess(successEl, "User saved.");
+      }
+    } catch (error) {
+      if (error.details) {
+        showError(errorEl, `${error.message}: ${Object.values(error.details).join("; ")}`);
+      } else {
+        showError(errorEl, error.message);
+      }
+    }
+  });
+
+  if (roles.length === 0) {
+    showError(errorEl, "No roles available.");
+  }
+}
+
+async function initRolesList() {
+  document.getElementById("logout-btn")?.addEventListener("click", logout);
+  const tbody = document.getElementById("roles-table-body");
+  const errorEl = document.getElementById("roles-error");
+  const createPanel = document.getElementById("role-create-panel");
+  const createForm = document.getElementById("role-create-form");
+
+  document.getElementById("roles-new-btn")?.addEventListener("click", () => {
+    createPanel?.classList.remove("hidden");
+  });
+  document.getElementById("role-create-cancel")?.addEventListener("click", () => {
+    createPanel?.classList.add("hidden");
+  });
+
+  createForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    hideError(errorEl);
+    try {
+      const role = await api("/api/roles", {
+        method: "POST",
+        body: JSON.stringify({
+          slug: createForm.slug.value.trim(),
+          name: createForm.name.value.trim(),
+          description: createForm.description.value.trim() || null,
+          permission_ids: [],
+        }),
+      });
+      window.location.href = `/admin/roles/${role.id}`;
+    } catch (error) {
+      showError(errorEl, error.message);
+    }
+  });
+
+  try {
+    const result = await api("/api/roles");
+    const roles = result.items ?? [];
+    tbody.innerHTML = roles
+      .map(
+        (role) => `
+          <tr>
+            <td>${escapeHtml(role.name)}</td>
+            <td><code>${escapeHtml(role.slug)}</code></td>
+            <td>${(role.permissions ?? []).length}</td>
+            <td><a class="btn btn-secondary btn-sm" href="/admin/roles/${escapeHtml(role.id)}">Edit</a></td>
+          </tr>
+        `,
+      )
+      .join("");
+  } catch (error) {
+    showError(errorEl, error.message);
+    tbody.innerHTML = `<tr><td colspan="4" class="muted">Failed to load roles.</td></tr>`;
+  }
+}
+
+async function initRoleEdit() {
+  document.getElementById("logout-btn")?.addEventListener("click", logout);
+  const roleId = document.body.dataset.id;
+  const form = document.getElementById("role-form");
+  const errorEl = document.getElementById("role-error");
+  const successEl = document.getElementById("role-success");
+  const permissionsEl = document.getElementById("role-permissions");
+
+  try {
+    const [role, permissionsResult] = await Promise.all([
+      api(`/api/roles/${roleId}`),
+      api("/api/permissions"),
+    ]);
+    const permissions = permissionsResult.items ?? [];
+    const selected = new Set((role.permissions ?? []).map((p) => p.id));
+
+    form.name.value = role.name;
+    form.description.value = role.description || "";
+
+    permissionsEl.innerHTML = permissions
+      .map(
+        (perm) => `
+          <label class="checkbox-row">
+            <input type="checkbox" name="permission_ids" value="${escapeHtml(perm.id)}" ${
+              selected.has(perm.id) ? "checked" : ""
+            }>
+            <code>${escapeHtml(perm.slug)}</code> — ${escapeHtml(perm.name)}
+          </label>
+        `,
+      )
+      .join("");
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      hideError(errorEl);
+      hideSuccess(successEl);
+      const permission_ids = [
+        ...form.querySelectorAll('input[name="permission_ids"]:checked'),
+      ].map((el) => el.value);
+
+      try {
+        await api(`/api/roles/${roleId}`, {
+          method: "PUT",
+          body: JSON.stringify({
+            name: form.name.value.trim(),
+            description: form.description.value.trim() || null,
+            permission_ids,
+          }),
+        });
+        showSuccess(successEl, "Role updated.");
+      } catch (error) {
+        if (error.details) {
+          showError(errorEl, `${error.message}: ${Object.values(error.details).join("; ")}`);
+        } else {
+          showError(errorEl, error.message);
+        }
+      }
+    });
+  } catch (error) {
+    showError(errorEl, error.message);
+  }
+}
+
+async function initAuditList() {
+  document.getElementById("logout-btn")?.addEventListener("click", logout);
+  const tbody = document.getElementById("audit-table-body");
+  const errorEl = document.getElementById("audit-error");
+  const form = document.getElementById("audit-filter-form");
+  const detailPanel = document.getElementById("audit-detail-panel");
+  const detailJson = document.getElementById("audit-detail-json");
+
+  document.getElementById("audit-detail-close")?.addEventListener("click", () => {
+    detailPanel?.classList.add("hidden");
+  });
+
+  async function loadAudit(searchParams = new URLSearchParams()) {
+    hideError(errorEl);
+    tbody.innerHTML = `<tr><td colspan="6" class="muted">Loading…</td></tr>`;
+    try {
+      const result = await api(`/api/audit?${searchParams.toString()}`);
+      const items = result.items ?? [];
+      if (items.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="muted">No audit entries found.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = items
+        .map(
+          (entry, index) => `
+            <tr>
+              <td>${escapeHtml(formatDate(entry.created_at))}</td>
+              <td>${escapeHtml(entry.actor_email || entry.actor_id || "—")}</td>
+              <td><code>${escapeHtml(entry.action)}</code></td>
+              <td>${escapeHtml(entry.entity_type)}${entry.entity_id ? ` / ${escapeHtml(entry.entity_id)}` : ""}</td>
+              <td>${escapeHtml(entry.ip_address || "—")}</td>
+              <td><button type="button" class="btn btn-secondary btn-sm" data-audit-index="${index}">Details</button></td>
+            </tr>
+          `,
+        )
+        .join("");
+
+      tbody.querySelectorAll("[data-audit-index]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const entry = items[Number(button.getAttribute("data-audit-index"))];
+          detailJson.textContent = JSON.stringify(entry, null, 2);
+          detailPanel?.classList.remove("hidden");
+        });
+      });
+    } catch (error) {
+      showError(errorEl, error.message);
+      tbody.innerHTML = `<tr><td colspan="6" class="muted">Failed to load audit log.</td></tr>`;
+    }
+  }
+
+  form?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const params = new URLSearchParams();
+    for (const [key, value] of new FormData(form).entries()) {
+      if (value) params.set(key, String(value));
+    }
+    loadAudit(params);
+  });
+
+  await loadAudit();
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   const page = document.body.dataset.page;
 
@@ -1451,6 +1853,27 @@ document.addEventListener("DOMContentLoaded", () => {
       break;
     case "profile":
       initProfilePage();
+      break;
+    case "search":
+      initSearchPage();
+      break;
+    case "users-list":
+      initUsersList();
+      break;
+    case "users-new":
+      initUsersForm(true);
+      break;
+    case "users-edit":
+      initUsersForm(false);
+      break;
+    case "roles-list":
+      initRolesList();
+      break;
+    case "roles-edit":
+      initRoleEdit();
+      break;
+    case "audit-list":
+      initAuditList();
       break;
     default:
       document.getElementById("logout-btn")?.addEventListener("click", logout);

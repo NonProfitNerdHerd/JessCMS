@@ -120,18 +120,19 @@ export function renderPublicView(ctx: PublicContext): string {
     }
     case "search": {
       const q = view.searchQuery ?? "";
+      const searchParams = new URLSearchParams(ctx.url.searchParams);
+      searchParams.delete("page");
+      const queryString = searchParams.toString();
       const cards = (view.searchResults ?? [])
         .map((hit) =>
           renderContentCard({
             title: hit.title,
             url: hit.url,
             excerpt: hit.excerpt,
+            meta: hit.published_at ? formatDate(hit.published_at) : hit.content_type ?? hit.kind,
           }),
         )
         .join("");
-      const searchParams = new URLSearchParams(ctx.url.searchParams);
-      searchParams.delete("page");
-      const queryString = searchParams.toString();
       const pagination = view.pagination
         ? renderPagination(
             ctx.url.pathname,
@@ -143,8 +144,15 @@ export function renderPublicView(ctx: PublicContext): string {
       return renderByTemplate(
         ctx,
         `<section class="jess-search">
-          <header class="jess-page-header"><h1>Search</h1><p>Results for “${escapeHtml(q)}”</p></header>
-          <div class="jess-card-grid">${cards || "<p>No results found.</p>"}</div>
+          <header class="jess-page-header">
+            <h1>Search</h1>
+            <form class="jess-search-form" method="get" action="/search">
+              <input type="search" name="q" value="${escapeHtml(q)}" placeholder="Search the site" class="jess-search-input">
+              <button type="submit" class="jess-button jess-button-primary">Search</button>
+            </form>
+            ${q ? `<p class="jess-intro">Results for “${escapeHtml(q)}”</p>` : `<p class="jess-intro">Find pages, posts, events, and more.</p>`}
+          </header>
+          <div class="jess-card-grid">${cards || (q ? "<p>No results found.</p>" : "<p>Enter a search term above.</p>")}</div>
           ${pagination}
         </section>`,
       );

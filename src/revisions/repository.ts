@@ -5,7 +5,12 @@ import {
   resolveEntityStorage,
   type ContentEntityType,
 } from "../workflow/types";
-import { syncContentEntryToContentIndex } from "../content-index/repository";
+import {
+  syncContentEntryToContentIndex,
+  syncEventToContentIndex,
+  syncPageToContentIndex,
+  syncPostToContentIndex,
+} from "../content-index/repository";
 import { getContentTypeByKey } from "../content-types/registry";
 import type {
   ContentRevisionRecord,
@@ -352,6 +357,14 @@ export async function restoreRevision(
   const restored = await env.DB.prepare(`SELECT * FROM ${storage.table} WHERE id = ?`)
     .bind(entityId)
     .first<Record<string, unknown>>();
+
+  if (storage.table === "pages") {
+    await syncPageToContentIndex(env.DB, restored as never);
+  } else if (storage.table === "posts") {
+    await syncPostToContentIndex(env.DB, restored as never);
+  } else if (storage.table === "events") {
+    await syncEventToContentIndex(env.DB, restored as never);
+  }
 
   const newRevision = await createContentRevision(
     env.DB,

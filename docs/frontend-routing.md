@@ -28,7 +28,7 @@ Admin and API routes are handled before the public layer. Static files with file
 | `/events/:slug` | `event` | Published event |
 | `/category/:slug` | `category` | Posts in category |
 | `/tag/:slug` | `tag` | Posts with tag |
-| `/search?q=` | `search` | Full-text search across pages, posts, events |
+| `/search?q=` | `search` | Full-text search via `content_index` (pages, posts, events, plugin content) |
 | `{route_base}/{slug}` | `generic-content` | Published generic entry via `content_index` |
 | unmatched | `not-found` | 404 page |
 

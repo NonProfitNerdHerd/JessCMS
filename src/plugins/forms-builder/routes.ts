@@ -413,6 +413,15 @@ export async function handlePublicSubmitForm(
       form.fields,
     );
 
+    await writeAuditLog(env.DB, {
+      actorId: null,
+      action: "create",
+      entityType: "form_submission",
+      entityId: submissionId,
+      metadata: { form_id: form.id, form_slug: form.slug },
+      ipAddress: getClientIp(request),
+    });
+
     return created({
       success: true,
       submission_id: submissionId,

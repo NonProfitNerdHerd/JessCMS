@@ -24,6 +24,9 @@ const SITE_NAV_HREFS = new Set([
   "/admin/settings/theme",
   "/admin/plugins",
   "/admin/profile",
+  "/admin/users",
+  "/admin/roles",
+  "/admin/audit",
 ]);
 
 function dedupeNavItems(items: AdminNavItem[]): AdminNavItem[] {
@@ -117,6 +120,12 @@ export async function getAdminNavigation(
     { href: "/admin/plugins", label: "Plugins", icon: "🧩", permission: "plugins:read" },
   ].filter((item) => canAccessNavItem(user, item));
 
+  const systemItems: AdminNavItem[] = [
+    { href: "/admin/users", label: "Users", icon: "👤", permission: "users:read" },
+    { href: "/admin/roles", label: "Roles", icon: "🔐", permission: "roles:read" },
+    { href: "/admin/audit", label: "Audit Log", icon: "📋", permission: "audit:read" },
+  ].filter((item) => canAccessNavItem(user, item));
+
   const sections: AdminNavSection[] = [
     {
       id: "main",
@@ -143,6 +152,14 @@ export async function getAdminNavigation(
     label: "Site",
     items: siteItems,
   });
+
+  if (systemItems.length > 0) {
+    sections.push({
+      id: "system",
+      label: "System",
+      items: systemItems,
+    });
+  }
 
   return sections;
 }

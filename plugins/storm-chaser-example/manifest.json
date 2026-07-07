@@ -35,6 +35,8 @@
       "supports_seo": true,
       "supports_featured_image": true,
       "supports_public_routes": true,
+      "supports_search": true,
+      "search_weight": 1.1,
       "schema_json": {
         "fields": [
           {

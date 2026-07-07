@@ -125,9 +125,10 @@ export async function syncRuntimeToDatabase(env: Env): Promise<RuntimeSnapshot> 
           id, type_key, label, plural_label, description, source, plugin_id, enabled,
           supports_json, supports_html, supports_revisions, supports_workflow,
           supports_seo, supports_featured_image, supports_author, supports_parent,
-          supports_archive, supports_public_routes, route_base, admin_base, icon,
+          supports_archive, supports_public_routes, supports_search, search_weight,
+          search_fields_json, route_base, admin_base, icon,
           schema_json, settings_json, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
         ON CONFLICT(type_key) DO UPDATE SET
           label = excluded.label,
           plural_label = excluded.plural_label,
@@ -145,6 +146,9 @@ export async function syncRuntimeToDatabase(env: Env): Promise<RuntimeSnapshot> 
           supports_parent = excluded.supports_parent,
           supports_archive = excluded.supports_archive,
           supports_public_routes = excluded.supports_public_routes,
+          supports_search = excluded.supports_search,
+          search_weight = excluded.search_weight,
+          search_fields_json = excluded.search_fields_json,
           route_base = excluded.route_base,
           admin_base = excluded.admin_base,
           icon = excluded.icon,
@@ -172,6 +176,9 @@ export async function syncRuntimeToDatabase(env: Env): Promise<RuntimeSnapshot> 
         type.supports_parent ? 1 : 0,
         type.supports_archive === false ? 0 : 1,
         type.supports_public_routes === false ? 0 : 1,
+        type.supports_search === false ? 0 : 1,
+        type.search_weight ?? 1,
+        type.search_fields_json ? JSON.stringify(type.search_fields_json) : null,
         type.route_base ?? null,
         type.admin_base ?? null,
         type.icon ?? null,

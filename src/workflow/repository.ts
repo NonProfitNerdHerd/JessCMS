@@ -12,7 +12,12 @@ import {
   type WorkflowStateRecord,
   type WorkflowUpdateInput,
 } from "./types";
-import { syncContentEntryToContentIndex } from "../content-index/repository";
+import {
+  syncContentEntryToContentIndex,
+  syncEventToContentIndex,
+  syncPageToContentIndex,
+  syncPostToContentIndex,
+} from "../content-index/repository";
 import { getContentTypeByKey } from "../content-types/registry";
 
 export class WorkflowError extends Error {
@@ -178,6 +183,21 @@ async function syncContentStatus(
     .prepare(`UPDATE ${storage.table} SET ${sets.join(", ")} WHERE id = ?`)
     .bind(...values)
     .run();
+
+  const row = await db
+    .prepare(`SELECT * FROM ${storage.table} WHERE id = ?`)
+    .bind(entityId)
+    .first<Record<string, unknown>>();
+
+  if (!row) return;
+
+  if (storage.table === "pages") {
+    await syncPageToContentIndex(db, row as never);
+  } else if (storage.table === "posts") {
+    await syncPostToContentIndex(db, row as never);
+  } else if (storage.table === "events") {
+    await syncEventToContentIndex(db, row as never);
+  }
 }
 
 export async function transitionWorkflow(

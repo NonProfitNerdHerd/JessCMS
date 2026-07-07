@@ -222,14 +222,20 @@ export async function getTagBySlug(
     .first();
 }
 
+import type { SearchResultItem } from "../search/query";
+
 export interface SearchHit {
-  kind: "page" | "post" | "event";
+  kind: string;
   id: string;
   slug: string;
   title: string;
   excerpt: string | null;
   url: string;
+  content_type?: string;
+  published_at?: string | null;
 }
+
+export type { SearchResultItem };
 
 export async function searchPublishedContent(
   db: D1Database,
