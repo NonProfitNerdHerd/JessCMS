@@ -55,13 +55,19 @@ interface BlockStyle {
 
 | Column | Purpose |
 |--------|---------|
-| content_json | Canonical editor document (JSON string) |
-| content_html | Rendered output for public pages (cached) |
+| content_json | Canonical **published** (or working draft) editor document |
+| content_html | Rendered HTML cache for public pages |
+| draft_content_json | Optional in-progress edits for already-published content |
 
-On save (future): validate JSON → render HTML → store both.
+On save: validate JSON → render HTML (server) → store both.
+On draft-save of published content: write `draft_content_json` only.
+On publish: promote draft → `content_json` + regenerate `content_html`.
 
-On read (public): serve `content_html`.
-On read (admin): serve `content_json`.
+On read (public): serve `content_html` (or re-render from `content_json`).
+On read (admin): prefer `draft_content_json` when present, else `content_json`.
+
+**Divider vs Spacer:** Divider is a visible horizontal rule. Spacer is empty vertical space. There is no separate Separator block.
+
 
 ## Core Block Types
 

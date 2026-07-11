@@ -37,7 +37,7 @@ import { isGenericContentType } from "./registry";
 export { NotFoundError, ValidationError };
 
 const ENTRY_COLUMNS = `
-  id, content_type, title, slug, status, excerpt, content_json, content_html,
+  id, content_type, title, slug, status, excerpt, content_json, content_html, draft_content_json,
   author_id, featured_image_id, parent_id, template, seo_title, seo_description,
   published_at, metadata_json, plugin_id, created_at, updated_at
 `;
@@ -62,6 +62,7 @@ function mapEntryRow(row: Record<string, unknown>): ContentEntryRecord {
     excerpt: (row.excerpt as string | null) ?? null,
     content_json: (row.content_json as string | null) ?? null,
     content_html: (row.content_html as string | null) ?? null,
+    draft_content_json: (row.draft_content_json as string | null) ?? null,
     author_id: (row.author_id as string | null) ?? null,
     featured_image_id: (row.featured_image_id as string | null) ?? null,
     parent_id: (row.parent_id as string | null) ?? null,
@@ -491,6 +492,7 @@ export async function updateContentEntry(
     "excerpt",
     "content_json",
     "content_html",
+    "draft_content_json",
     "featured_image_id",
     "parent_id",
     "template",

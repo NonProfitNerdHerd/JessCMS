@@ -10,6 +10,7 @@ import {
   validateBaseContentInput,
   validateEventInput,
 } from "../lib/validation";
+import { prepareContentBody } from "../blocks/persist";
 import { getClientIp, resolveAuditAction, writeAuditLog } from "../db/audit";
 import {
   removeContentIndexEntry,
@@ -32,6 +33,7 @@ export interface ContentRecord {
   content: string | null;
   content_json: string | null;
   content_html: string | null;
+  draft_content_json?: string | null;
   status: string;
   author_id: string | null;
   featured_image_id: string | null;
@@ -62,19 +64,19 @@ export interface EventRecord extends ContentRecord {
 type ContentTable = "pages" | "posts" | "events";
 
 const PAGE_COLUMNS = `
-  id, slug, title, excerpt, content, content_json, content_html, status,
+  id, slug, title, excerpt, content, content_json, content_html, draft_content_json, status,
   author_id, featured_image_id, parent_id, template, seo_title, seo_description,
   published_at, created_at, updated_at
 `;
 
 const POST_COLUMNS = `
-  id, slug, title, excerpt, content, content_json, content_html, status,
+  id, slug, title, excerpt, content, content_json, content_html, draft_content_json, status,
   author_id, category_id, featured_image_id, parent_id, template, seo_title,
   seo_description, published_at, created_at, updated_at
 `;
 
 const EVENT_COLUMNS = `
-  id, slug, title, status, excerpt, content_json, content_html, author_id,
+  id, slug, title, status, excerpt, content_json, content_html, draft_content_json, author_id,
   featured_image_id, parent_id, template, seo_title, seo_description,
   start_datetime, end_datetime, location_name, location_address, latitude,
   longitude, timezone, event_status, published_at, created_at, updated_at
@@ -233,10 +235,17 @@ async function slugExists(
   return Boolean(row);
 }
 
-function baseInsertFields(input: BaseContentInput): {
+function baseInsertFields(input: BaseContentInput & { draft_content_json?: string | null; save_mode?: "draft" | "publish" | "update" }): {
   columns: string[];
   values: unknown[];
 } {
+  const prepared = prepareContentBody({
+    content_json: input.content_json,
+    content_html: input.content_html,
+    draft_content_json: input.draft_content_json,
+    save_mode: input.save_mode ?? (input.status === "published" ? "publish" : "update"),
+  });
+
   const columns: string[] = [];
   const values: unknown[] = [];
   const entries: Array<[string, unknown]> = [
@@ -244,8 +253,9 @@ function baseInsertFields(input: BaseContentInput): {
     ["slug", input.slug],
     ["status", input.status ?? "draft"],
     ["excerpt", input.excerpt ?? null],
-    ["content_json", normalizeContentJson(input.content_json)],
-    ["content_html", input.content_html ?? null],
+    ["content_json", prepared.content_json ?? normalizeContentJson(input.content_json)],
+    ["content_html", prepared.content_html ?? input.content_html ?? null],
+    ["draft_content_json", prepared.draft_content_json ?? null],
     ["featured_image_id", input.featured_image_id ?? null],
     ["parent_id", input.parent_id ?? null],
     ["template", input.template ?? null],
@@ -515,6 +525,7 @@ async function updateRecord<T extends ContentRecord>(
     "excerpt",
     "content_json",
     "content_html",
+    "draft_content_json",
     "featured_image_id",
     "parent_id",
     "template",
@@ -532,16 +543,40 @@ async function updateRecord<T extends ContentRecord>(
     "event_status",
   ];
 
+  const saveMode =
+    (input.save_mode as "draft" | "publish" | "update" | undefined) ??
+    (input.status === "published" ? "publish" : "update");
+
+  const prepared = prepareContentBody({
+    content_json: input.content_json,
+    content_html: input.content_html as string | null | undefined,
+    draft_content_json: input.draft_content_json,
+    save_mode: saveMode,
+    existing_status: String(existing.status ?? ""),
+  });
+
+  const effectiveInput: Record<string, unknown> = { ...input };
+  if (prepared.content_json !== null) {
+    effectiveInput.content_json = prepared.content_json;
+    effectiveInput.content_html = prepared.content_html;
+  } else if (saveMode === "draft" && String(existing.status) === "published") {
+    delete effectiveInput.content_json;
+    delete effectiveInput.content_html;
+  }
+  if (prepared.draft_content_json !== undefined) {
+    effectiveInput.draft_content_json = prepared.draft_content_json;
+  }
+
   const sets: string[] = [];
   const values: unknown[] = [];
 
   for (const key of allowed) {
-    if (key in input) {
+    if (key in effectiveInput) {
       sets.push(`${key} = ?`);
       values.push(
-        key === "content_json"
-          ? normalizeContentJson(input[key])
-          : input[key],
+        key === "content_json" || key === "draft_content_json"
+          ? normalizeContentJson(effectiveInput[key])
+          : effectiveInput[key],
       );
     }
   }

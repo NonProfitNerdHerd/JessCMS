@@ -20,6 +20,7 @@
     "test:r2-media": "node scripts/r2-media-smoke-test.mjs",
     "test:search": "node scripts/search-smoke-test.mjs",
     "test:permissions": "node scripts/permissions-smoke-test.mjs",
+    "test:visual-editor": "node scripts/visual-editor-smoke-test.mjs",
     "search:rebuild": "node scripts/search-rebuild.mjs",
     "test:forms": "node scripts/forms-smoke-test.mjs",
     "test:workflow": "node scripts/workflow-smoke-test.mjs",

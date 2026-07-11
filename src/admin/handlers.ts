@@ -135,33 +135,17 @@ function editPageShell(type: string, label: string, isEvent = false): string {
       ${eventFields}
       <section class="field field-wide block-editor-section">
         <span class="field-label">Content</span>
-        <div id="block-editor" class="block-editor-root">
-          <div class="block-editor-toolbar">
-            <div class="block-add-wrap">
-              <button type="button" class="btn btn-secondary" data-block-add-btn>+ Add block</button>
-              <div class="block-add-menu hidden" data-block-add-menu>
-                <button type="button" data-add-type="paragraph">Paragraph</button>
-                <button type="button" data-add-type="heading">Heading</button>
-                <button type="button" data-add-type="image">Image</button>
-                <button type="button" data-add-type="button">Button</button>
-                <button type="button" data-add-type="quote">Quote</button>
-                <button type="button" data-add-type="list">List</button>
-                <button type="button" data-add-type="spacer">Spacer</button>
-                <button type="button" data-add-type="html">Custom HTML</button>
-                <button type="button" data-add-type="form">Form</button>
-              </div>
-            </div>
-          </div>
-          <div class="block-editor-list" data-block-list></div>
-        </div>
+        <div id="block-editor" class="block-editor-root visual-editor-host"></div>
       </section>
       <details class="block-editor-advanced field-wide">
         <summary>Advanced / Raw JSON</summary>
         <label class="field"><span>Content JSON</span><textarea class="textarea code" name="content_json" id="content-json-raw" rows="8" placeholder='{"version":1,"blocks":[]}'></textarea></label>
         <label class="field"><span>Generated HTML (read-only)</span><textarea class="textarea code" name="content_html" id="content-html-raw" rows="6" readonly></textarea></label>
+        <input type="hidden" name="draft_content_json" id="draft-content-json-raw" value="">
+        <input type="hidden" name="save_mode" id="content-save-mode" value="update">
         <button type="button" class="btn btn-secondary btn-sm" id="apply-raw-json-btn">Apply raw JSON to editor</button>
       </details>
-      <div class="form-actions">
+      <div class="form-actions ve-form-actions-legacy">
         <button type="button" class="btn btn-secondary" data-action="save">Save</button>
         <button type="button" class="btn btn-danger" data-action="delete">Delete</button>
       </div>

@@ -29,37 +29,41 @@ export function extractTextFromBlocks(contentJson: string | null | undefined): s
   const doc = parseContentDocument(contentJson);
   const parts: string[] = [];
 
-  for (const block of doc.blocks) {
-    switch (block.type) {
-      case "paragraph":
-      case "heading":
-      case "quote":
-        parts.push(String(block.props.text ?? ""));
-        if (block.props.citation) {
-          parts.push(String(block.props.citation));
+  const walk = (blocks: typeof doc.blocks) => {
+    for (const block of blocks) {
+      switch (block.type) {
+        case "paragraph":
+        case "heading":
+        case "quote":
+          parts.push(String(block.props.text ?? ""));
+          if (block.props.citation) {
+            parts.push(String(block.props.citation));
+          }
+          break;
+        case "list": {
+          const items = Array.isArray(block.props.items) ? block.props.items : [];
+          parts.push(...items.map((item) => String(item)));
+          break;
         }
-        break;
-      case "list": {
-        const items = Array.isArray(block.props.items) ? block.props.items : [];
-        parts.push(...items.map((item) => String(item)));
-        break;
+        case "button":
+          parts.push(String(block.props.text ?? ""));
+          break;
+        case "image":
+          parts.push(String(block.props.alt ?? ""), String(block.props.caption ?? ""));
+          break;
+        case "html":
+          parts.push(
+            extractTextFromHtml(String(block.props.raw_html ?? block.props.raw ?? "")),
+          );
+          break;
+        default:
+          break;
       }
-      case "button":
-        parts.push(String(block.props.text ?? ""));
-        break;
-      case "image":
-        parts.push(String(block.props.alt ?? ""), String(block.props.caption ?? ""));
-        break;
-      case "html":
-        parts.push(
-          extractTextFromHtml(String(block.props.raw_html ?? block.props.raw ?? "")),
-        );
-        break;
-      default:
-        break;
+      if (block.children?.length) walk(block.children);
     }
-  }
+  };
 
+  walk(doc.blocks);
   return parts.filter(Boolean).join(" ");
 }
 

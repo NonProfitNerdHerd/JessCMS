@@ -370,6 +370,11 @@ async function initContentEdit() {
     blockEditor = new window.JessBlockEditor.BlockEditor(editorRoot, {
       jsonField: jsonField instanceof HTMLTextAreaElement ? jsonField : null,
       htmlField: htmlField instanceof HTMLTextAreaElement ? htmlField : null,
+      form,
+      onDirty: () => {
+        const modeField = form?.elements?.namedItem("save_mode");
+        if (modeField instanceof HTMLInputElement) modeField.value = "draft";
+      },
     });
     blockEditor.loadFromContent("", "");
   }
@@ -382,6 +387,13 @@ async function initContentEdit() {
     hideError(errorEl);
   });
 
+  const titleInput = form?.elements?.namedItem("title");
+  if (titleInput instanceof HTMLInputElement) {
+    titleInput.addEventListener("input", () => {
+      blockEditor?.setTitle(titleInput.value);
+    });
+  }
+
   if (titleField instanceof HTMLInputElement && slugField instanceof HTMLInputElement && id === "new") {
     titleField.addEventListener("blur", () => {
       if (!slugField.value) slugField.value = slugify(titleField.value);
@@ -391,7 +403,9 @@ async function initContentEdit() {
   const loadItemIntoForm = (item) => {
     fillContentForm(form, item);
     if (blockEditor) {
-      blockEditor.loadFromContent(item.content_json ?? "", item.content_html ?? "");
+      const sourceJson = item.draft_content_json || item.content_json || "";
+      blockEditor.loadFromContent(sourceJson, item.content_html ?? "");
+      blockEditor.setTitle(item.title || "Untitled");
     }
   };
 
@@ -439,9 +453,15 @@ async function initContentEdit() {
     try {
       if (action === "save") {
         delete payload.status;
+        payload.save_mode = "draft";
+        if (form?.dataset?.status === "published" || form?.elements?.namedItem("status")?.value === "published") {
+          payload.draft_content_json = payload.content_json;
+        }
       }
       if (action === "publish") {
         payload.status = "published";
+        payload.save_mode = "publish";
+        payload.draft_content_json = null;
         if (!payload.published_at) {
           payload.published_at = new Date().toISOString();
         }
@@ -473,6 +493,8 @@ async function initContentEdit() {
         method: "PUT",
         body: JSON.stringify(payload),
       });
+
+      if (blockEditor) blockEditor.setSaveStatus("Saved");
 
       if (window.JessWorkflowRevisions) {
         window.JessWorkflowRevisions.refresh(type, id, api);

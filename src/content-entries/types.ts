@@ -7,6 +7,7 @@ export interface ContentEntryRecord {
   excerpt: string | null;
   content_json: string | null;
   content_html: string | null;
+  draft_content_json?: string | null;
   author_id: string | null;
   featured_image_id: string | null;
   parent_id: string | null;
@@ -28,6 +29,8 @@ export interface ContentEntryInput {
   excerpt?: string | null;
   content_json?: string | null;
   content_html?: string | null;
+  draft_content_json?: string | null;
+  save_mode?: "draft" | "publish" | "update";
   featured_image_id?: string | null;
   parent_id?: string | null;
   template?: string | null;

@@ -19,6 +19,8 @@ export interface BaseContentInput {
   excerpt?: string | null;
   content_json?: string | null;
   content_html?: string | null;
+  draft_content_json?: string | null;
+  save_mode?: "draft" | "publish" | "update";
   featured_image_id?: string | null;
   parent_id?: string | null;
   template?: string | null;

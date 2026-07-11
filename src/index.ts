@@ -61,6 +61,7 @@ import {
   handleEditorBlocks,
   handleThemeSettings,
   handleUpdateThemeSettings,
+  handleValidateEditorDocument,
 } from "./routes/theme-settings";
 import {
   handleCreateMedia,
@@ -248,6 +249,7 @@ const ROUTES: RouteDefinition[] = [
   staticRoute("GET", "/api/theme/settings", (_request, env) => handleThemeSettings(env)),
   staticRoute("PUT", "/api/theme/settings", handleUpdateThemeSettings),
   staticRoute("GET", "/api/editor/blocks", (_request, env) => handleEditorBlocks(env)),
+  staticRoute("POST", "/api/editor/validate", handleValidateEditorDocument),
 
   staticRoute("GET", "/api/search", handlePublicSearch),
   staticRoute("GET", "/api/search/admin", handleAdminSearch),

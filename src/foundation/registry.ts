@@ -148,6 +148,18 @@ export const BLOCK_TYPES = [
     allows_children: true,
   },
   {
+    type: "divider",
+    label: "Divider",
+    category: "layout",
+    source: "core",
+    props_schema: {
+      style: { type: "string", default: "solid" },
+      thickness: { type: "string", default: "1px" },
+      width: { type: "string", default: "100%" },
+      color: { type: "string", default: "currentColor" },
+    },
+  },
+  {
     type: "spacer",
     label: "Spacer",
     category: "layout",
