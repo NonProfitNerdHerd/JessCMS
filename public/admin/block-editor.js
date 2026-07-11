@@ -43,8 +43,8 @@
       this.doc = { version: 1, blocks: [] };
       this.selectedId = null;
       this.device = "desktop";
-      this.leftTab = "inserter";
-      this.rightTab = "block";
+      this.leftTab = "structure";
+      this.rightTab = "page";
       this.leftOpen = true;
       this.rightOpen = true;
       this.collapsed = new Set();
@@ -54,38 +54,74 @@
       this.search = "";
       this.saveStatus = "Saved";
       this.validation = { errors: [], warnings: [] };
+      this.pageFieldsHost = document.getElementById("page-settings-fields");
+      this.workflowHost = document.getElementById("content-sidebar");
+      this.deleteBtn = document.getElementById("content-delete-btn");
       this.mount();
     }
 
+    getContentLabel() {
+      return this.form?.dataset?.contentLabel || document.body.dataset.label || "Page";
+    }
+
+    getBackHref() {
+      const type = document.body.dataset.type || this.form?.dataset?.contentType || "pages";
+      if (type.startsWith("content/")) return `/admin/${type}`;
+      return `/admin/${type}`;
+    }
+
+    parkPageFields() {
+      const parking = this.form || document.getElementById("content-form");
+      if (!parking) return;
+      if (this.pageFieldsHost && this.pageFieldsHost.parentElement !== parking) {
+        this.pageFieldsHost.hidden = true;
+        parking.appendChild(this.pageFieldsHost);
+      }
+      if (this.workflowHost && this.workflowHost.parentElement !== parking) {
+        this.workflowHost.hidden = true;
+        parking.appendChild(this.workflowHost);
+      }
+      if (this.deleteBtn && this.deleteBtn.parentElement !== parking) {
+        this.deleteBtn.hidden = true;
+        parking.appendChild(this.deleteBtn);
+      }
+    }
+
     mount() {
-      this.root.classList.add("visual-editor");
+      this.root.classList.add("visual-editor", "gutenberg-editor");
+      const label = this.getContentLabel();
       this.root.innerHTML = `
         <div class="ve-toolbar" role="toolbar" aria-label="Editor toolbar">
-          <div class="ve-toolbar-group">
-            <button type="button" class="btn btn-secondary btn-sm" data-ve="toggle-left" title="Toggle left panel">☰</button>
-            <span class="ve-title" data-ve-title>Untitled</span>
+          <div class="ve-toolbar-group ve-toolbar-left">
+            <a class="ve-back-link" href="${this.getBackHref()}" title="Back to ${R.escapeHtml(label)}s">←</a>
+            <button type="button" class="ve-icon-btn ve-inserter-toggle is-primary" data-ve="open-inserter" title="Add block">+</button>
+            <button type="button" class="ve-icon-btn" data-ve="undo" title="Undo">↶</button>
+            <button type="button" class="ve-icon-btn" data-ve="redo" title="Redo">↷</button>
+            <button type="button" class="ve-icon-btn is-active" data-ve="show-list" title="List View">☰</button>
+          </div>
+          <div class="ve-toolbar-group ve-toolbar-center">
+            <button type="button" class="ve-doc-chip" data-ve="focus-title">
+              <span class="ve-title" data-ve-title>Untitled</span>
+              <span class="ve-doc-type muted">· ${R.escapeHtml(label)}</span>
+            </button>
             <span class="ve-save-status muted" data-ve-status>Saved</span>
             <span class="ve-validation muted" data-ve-validation></span>
           </div>
-          <div class="ve-toolbar-group">
-            <button type="button" class="btn btn-secondary btn-sm" data-ve="undo" title="Undo">↶</button>
-            <button type="button" class="btn btn-secondary btn-sm" data-ve="redo" title="Redo">↷</button>
-            <button type="button" class="btn btn-secondary btn-sm" data-ve="device" data-device="desktop" title="Desktop">🖥</button>
-            <button type="button" class="btn btn-secondary btn-sm" data-ve="device" data-device="tablet" title="Tablet">▤</button>
-            <button type="button" class="btn btn-secondary btn-sm" data-ve="device" data-device="mobile" title="Mobile">▮</button>
-          </div>
-          <div class="ve-toolbar-group">
+          <div class="ve-toolbar-group ve-toolbar-right">
+            <button type="button" class="ve-icon-btn" data-ve="preview" title="View page">↗</button>
+            <button type="button" class="ve-icon-btn is-active" data-ve="device" data-device="desktop" title="Desktop">🖥</button>
+            <button type="button" class="ve-icon-btn" data-ve="device" data-device="tablet" title="Tablet">▤</button>
+            <button type="button" class="ve-icon-btn" data-ve="device" data-device="mobile" title="Mobile">▮</button>
+            <button type="button" class="ve-icon-btn is-active" data-ve="toggle-right" title="Settings">⚙</button>
             <button type="button" class="btn btn-secondary btn-sm" data-action="save" data-ve="save-draft">Save draft</button>
-            <button type="button" class="btn btn-secondary btn-sm" data-ve="preview">Preview</button>
-            <button type="button" class="btn btn-primary btn-sm" data-action="publish" data-ve="publish">Publish</button>
-            <button type="button" class="btn btn-secondary btn-sm" data-ve="toggle-right" title="Toggle inspector">⚙</button>
+            <button type="button" class="btn btn-primary btn-sm" data-action="publish" data-ve="publish">Save</button>
           </div>
         </div>
         <div class="ve-workspace">
           <aside class="ve-left" data-ve-left>
             <div class="ve-tabs">
-              <button type="button" class="ve-tab is-active" data-left-tab="inserter">Blocks</button>
-              <button type="button" class="ve-tab" data-left-tab="structure">List</button>
+              <button type="button" class="ve-tab is-active" data-left-tab="structure">List View</button>
+              <button type="button" class="ve-tab" data-left-tab="inserter">Blocks</button>
             </div>
             <div class="ve-left-body" data-ve-left-body></div>
           </aside>
@@ -94,8 +130,8 @@
           </main>
           <aside class="ve-right" data-ve-right>
             <div class="ve-tabs">
-              <button type="button" class="ve-tab is-active" data-right-tab="block">Block</button>
-              <button type="button" class="ve-tab" data-right-tab="document">Document</button>
+              <button type="button" class="ve-tab is-active" data-right-tab="page">${R.escapeHtml(label)}</button>
+              <button type="button" class="ve-tab" data-right-tab="block">Block</button>
             </div>
             <div class="ve-right-body" data-ve-right-body></div>
           </aside>
@@ -117,9 +153,41 @@
           this.root.querySelector("[data-ve-left]")?.classList.toggle("is-collapsed", !this.leftOpen);
           return;
         }
+        if (target.dataset.ve === "open-inserter") {
+          this.leftOpen = true;
+          this.leftTab = "inserter";
+          this.root.querySelector("[data-ve-left]")?.classList.remove("is-collapsed");
+          this.root.querySelector("[data-ve='show-list']")?.classList.remove("is-active");
+          this.root.querySelector("[data-ve='open-inserter']")?.classList.add("is-active");
+          this.renderLeft();
+          return;
+        }
+        if (target.dataset.ve === "show-list") {
+          this.leftOpen = true;
+          this.leftTab = "structure";
+          this.root.querySelector("[data-ve-left]")?.classList.remove("is-collapsed");
+          this.root.querySelector("[data-ve='open-inserter']")?.classList.remove("is-active");
+          this.root.querySelector("[data-ve='show-list']")?.classList.add("is-active");
+          this.renderLeft();
+          return;
+        }
+        if (target.dataset.ve === "focus-title") {
+          this.rightOpen = true;
+          this.rightTab = "page";
+          this.root.querySelector("[data-ve-right]")?.classList.remove("is-collapsed");
+          this.root.querySelector("[data-ve='toggle-right']")?.classList.add("is-active");
+          this.renderRight();
+          const titleInput = this.form?.elements?.namedItem("title");
+          if (titleInput instanceof HTMLInputElement) {
+            titleInput.focus();
+            titleInput.select();
+          }
+          return;
+        }
         if (target.dataset.ve === "toggle-right") {
           this.rightOpen = !this.rightOpen;
           this.root.querySelector("[data-ve-right]")?.classList.toggle("is-collapsed", !this.rightOpen);
+          target.classList.toggle("is-active", this.rightOpen);
           return;
         }
         if (target.dataset.ve === "undo") {
@@ -145,6 +213,8 @@
         }
         if (target.dataset.leftTab) {
           this.leftTab = target.dataset.leftTab;
+          this.root.querySelector("[data-ve='show-list']")?.classList.toggle("is-active", this.leftTab === "structure");
+          this.root.querySelector("[data-ve='open-inserter']")?.classList.toggle("is-active", this.leftTab === "inserter");
           this.renderLeft();
           return;
         }
@@ -190,6 +260,12 @@
     setTitle(title) {
       const el = this.root.querySelector("[data-ve-title]");
       if (el) el.textContent = title || "Untitled";
+      const canvasTitle = this.canvas?.querySelector("[data-ve-canvas-title]");
+      if (canvasTitle && document.activeElement !== canvasTitle) {
+        canvasTitle.textContent = title || "";
+        const placeholder = this.canvas.querySelector(".ve-canvas-title-placeholder");
+        if (placeholder) placeholder.hidden = Boolean(title);
+      }
     }
 
     setSaveStatus(status) {
@@ -298,6 +374,9 @@
     select(id) {
       this.selectedId = id;
       this.rightTab = "block";
+      this.rightOpen = true;
+      this.root.querySelector("[data-ve-right]")?.classList.remove("is-collapsed");
+      this.root.querySelector("[data-ve='toggle-right']")?.classList.add("is-active");
       this.render();
     }
 
@@ -393,13 +472,15 @@
       if (this.leftTab === "structure") {
         const items = R.flattenStructure(this.doc.blocks);
         this.leftBody.innerHTML = `
-          <ul class="ve-structure">
+          <ul class="ve-structure" aria-label="List View">
             ${items
-              .map(
-                (item) => `
-              <li class="ve-structure-item ${item.id === this.selectedId ? "is-selected" : ""}" style="padding-left:${item.depth * 12 + 8}px">
+              .map((item) => {
+                const cat = R.BLOCK_CATEGORIES[item.type] ?? "advanced";
+                return `
+              <li class="ve-structure-item ${item.id === this.selectedId ? "is-selected" : ""}" style="padding-left:${item.depth * 14 + 6}px">
                 <button type="button" class="ve-structure-select" data-select-id="${item.id}">
-                  <span>${R.escapeHtml(item.label)}</span>
+                  <span class="ve-structure-icon cat-${cat}" aria-hidden="true"></span>
+                  <span class="ve-structure-label">${R.escapeHtml(item.label)}</span>
                 </button>
                 <span class="ve-structure-actions">
                   <button type="button" data-structure-action="up" data-block-id="${item.id}" title="Move up">↑</button>
@@ -407,9 +488,9 @@
                   <button type="button" data-structure-action="duplicate" data-block-id="${item.id}" title="Duplicate">⧉</button>
                   <button type="button" data-structure-action="delete" data-block-id="${item.id}" title="Delete">✕</button>
                 </span>
-              </li>`,
-              )
-              .join("")}
+              </li>`;
+              })
+              .join("") || `<li class="muted">No blocks yet. Use + to add one.</li>`}
           </ul>`;
         return;
       }
@@ -459,23 +540,35 @@
     }
 
     renderCanvas() {
+      const titleValue = this.form?.elements?.namedItem("title")?.value || "";
+      const titleHtml = `
+        <div class="ve-canvas-title-wrap">
+          <h1 class="ve-canvas-title" contenteditable="true" data-ve-canvas-title spellcheck="true">${R.escapeHtml(titleValue) || ""}</h1>
+          ${!titleValue ? `<span class="ve-canvas-title-placeholder">Add title</span>` : ""}
+        </div>`;
+
       if (!this.doc.blocks.length) {
         this.canvas.innerHTML = `
+          ${titleHtml}
           <div class="ve-empty">
             <p>Add your first block</p>
             <button type="button" class="btn btn-primary" data-add-type="paragraph">Add paragraph</button>
           </div>`;
+        this.bindCanvasTitle();
         return;
       }
 
-      this.canvas.innerHTML = this.doc.blocks
-        .map((block, index) => this.renderCanvasBlock(block, index))
-        .join("") + `<div class="ve-append"><button type="button" class="btn btn-secondary btn-sm" data-add-type="paragraph">+ Add block</button></div>`;
+      this.canvas.innerHTML =
+        titleHtml +
+        this.doc.blocks.map((block, index) => this.renderCanvasBlock(block, index)).join("") +
+        `<div class="ve-append"><button type="button" class="btn btn-secondary btn-sm" data-add-type="paragraph">+ Add block</button></div>`;
+
+      this.bindCanvasTitle();
 
       this.canvas.querySelectorAll("[data-block-id]").forEach((node) => {
         const id = node.dataset.blockId;
         node.addEventListener("click", (event) => {
-          if (event.target.closest("[data-canvas-action],[data-add-type]")) return;
+          if (event.target.closest("[data-canvas-action],[data-add-type],[data-ve-canvas-title]")) return;
           event.stopPropagation();
           this.select(id);
         });
@@ -517,6 +610,31 @@
           this.markDirty();
           this.renderRight();
         });
+      });
+    }
+
+    bindCanvasTitle() {
+      const titleEl = this.canvas.querySelector("[data-ve-canvas-title]");
+      if (!titleEl) return;
+      const sync = () => {
+        const titleInput = this.form?.elements?.namedItem("title");
+        const value = plainFromHtml(titleEl.innerHTML).trim();
+        if (titleInput instanceof HTMLInputElement && titleInput.value !== value) {
+          titleInput.value = value;
+          titleInput.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+        this.setTitle(value);
+        const placeholder = this.canvas.querySelector(".ve-canvas-title-placeholder");
+        if (placeholder) placeholder.hidden = Boolean(value);
+      };
+      titleEl.addEventListener("input", sync);
+      titleEl.addEventListener("blur", sync);
+      titleEl.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          titleEl.blur();
+          this.canvas.focus();
+        }
       });
     }
 
@@ -581,20 +699,43 @@
       this.root.querySelectorAll("[data-right-tab]").forEach((tab) => {
         tab.classList.toggle("is-active", tab.dataset.rightTab === this.rightTab);
       });
-      if (this.rightTab === "document") {
+
+      if (this.rightTab === "page" || this.rightTab === "document") {
+        this.parkPageFields();
+        const label = this.getContentLabel();
         this.rightBody.innerHTML = `
-          <p class="muted">Document settings use the fields above the editor (title, slug, SEO, featured image, workflow).</p>
+          <div class="ve-page-panel" data-ve-page-mount>
+            <p class="ve-page-heading">${R.escapeHtml(label)}</p>
+          </div>
           <div class="ve-validation-list">
             ${[...this.validation.errors, ...this.validation.warnings]
               .map((issue) => `<p class="${issue.severity === "error" ? "alert alert-error" : "muted"}">${R.escapeHtml(issue.message)}</p>`)
-              .join("") || '<p class="muted">No validation issues.</p>'}
+              .join("")}
           </div>`;
+        const mount = this.rightBody.querySelector("[data-ve-page-mount]");
+        if (this.pageFieldsHost && mount) {
+          this.pageFieldsHost.hidden = false;
+          mount.appendChild(this.pageFieldsHost);
+        }
+        if (this.workflowHost && mount) {
+          const hasContent = this.workflowHost.children.length > 0;
+          if (hasContent && document.body.dataset.id !== "new") {
+            this.workflowHost.hidden = false;
+            mount.appendChild(this.workflowHost);
+          }
+        }
+        if (this.deleteBtn && mount && document.body.dataset.id !== "new") {
+          this.deleteBtn.hidden = false;
+          mount.appendChild(this.deleteBtn);
+        }
         return;
       }
 
+      this.parkPageFields();
+
       const found = this.selectedId ? R.findBlock(this.doc.blocks, this.selectedId) : null;
       if (!found) {
-        this.rightBody.innerHTML = `<p class="muted">Select a block to edit its settings.</p>`;
+        this.rightBody.innerHTML = `<p class="muted">Select a block to edit its settings, or open the Page tab for document settings.</p>`;
         return;
       }
       const block = found.block;

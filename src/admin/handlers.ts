@@ -87,7 +87,8 @@ function listPageShell(type: string, label: string): string {
 function editPageShell(type: string, label: string, isEvent = false): string {
   const eventFields = isEvent
     ? `
-      <div class="form-grid">
+      <div class="ve-page-section" data-page-section="event">
+        <h3 class="ve-page-section-title">Event details</h3>
         <label class="field"><span>Start datetime</span><input class="input" name="start_datetime" type="datetime-local"></label>
         <label class="field"><span>End datetime</span><input class="input" name="end_datetime" type="datetime-local"></label>
         <label class="field"><span>Location name</span><input class="input" name="location_name"></label>
@@ -108,50 +109,42 @@ function editPageShell(type: string, label: string, isEvent = false): string {
     : "";
 
   return `
-    <div class="content-edit-layout">
-      <div class="content-edit-main">
-    <form id="content-form" class="admin-form">
-      <div id="form-error" class="alert alert-error hidden"></div>
-      <div class="form-grid">
-        <label class="field"><span>Title</span><input class="input" name="title" required></label>
-        <label class="field"><span>Slug</span><input class="input" name="slug" required pattern="[a-z0-9-]+"></label>
-        <label class="field field-wide"><span>Change summary</span><input class="input" name="change_summary" placeholder="Brief note about this save (optional)"></label>
-        <label class="field"><span>Published at</span><input class="input" name="published_at" type="datetime-local"></label>
-        <label class="field field-wide"><span>Excerpt</span><textarea class="textarea" name="excerpt" rows="2"></textarea></label>
-        <label class="field"><span>Template</span><input class="input" name="template"></label>
-        <input type="hidden" name="status" value="draft">
-        <div class="field field-wide featured-image-field" data-featured-image-field>
-          <span class="field-label">Featured image</span>
-          <input type="hidden" name="featured_image_id">
-          <div class="featured-image-preview muted" data-featured-image-preview>No image selected</div>
-          <div class="featured-image-actions">
-            <button type="button" class="btn btn-secondary btn-sm" data-featured-image-select>Select from library</button>
-            <button type="button" class="btn btn-secondary btn-sm hidden" data-featured-image-clear>Clear</button>
+    <form id="content-form" class="admin-form gutenberg-editor-form" data-content-type="${type}" data-content-label="${label}">
+      <div id="form-error" class="alert alert-error hidden ve-top-alert"></div>
+      <div id="block-editor" class="block-editor-root visual-editor-host"></div>
+
+      <div id="page-settings-fields" class="ve-page-fields-source" hidden>
+        <div class="ve-page-section" data-page-section="summary">
+          <h3 class="ve-page-section-title">Summary</h3>
+          <label class="field"><span>Title</span><input class="input" name="title" required></label>
+          <label class="field"><span>Slug</span><input class="input" name="slug" required pattern="[a-z0-9-]+"></label>
+          <label class="field"><span>Excerpt</span><textarea class="textarea" name="excerpt" rows="2"></textarea></label>
+          <div class="field featured-image-field" data-featured-image-field>
+            <span class="field-label">Featured image</span>
+            <input type="hidden" name="featured_image_id">
+            <div class="featured-image-preview muted" data-featured-image-preview>No image selected</div>
+            <div class="featured-image-actions">
+              <button type="button" class="btn btn-secondary btn-sm" data-featured-image-select>Set featured image</button>
+              <button type="button" class="btn btn-secondary btn-sm hidden" data-featured-image-clear>Clear</button>
+            </div>
           </div>
         </div>
-        <label class="field"><span>SEO title</span><input class="input" name="seo_title"></label>
-        <label class="field field-wide"><span>SEO description</span><textarea class="textarea" name="seo_description" rows="2"></textarea></label>
+        <div class="ve-page-section" data-page-section="status">
+          <h3 class="ve-page-section-title">Status &amp; visibility</h3>
+          <input type="hidden" name="status" value="draft">
+          <label class="field"><span>Published at</span><input class="input" name="published_at" type="datetime-local"></label>
+          <label class="field"><span>Template</span><input class="input" name="template" placeholder="Default template"></label>
+          <label class="field"><span>Change summary</span><input class="input" name="change_summary" placeholder="Optional note for this save"></label>
+        </div>
+        <div class="ve-page-section" data-page-section="seo">
+          <h3 class="ve-page-section-title">SEO</h3>
+          <label class="field"><span>SEO title</span><input class="input" name="seo_title"></label>
+          <label class="field"><span>SEO description</span><textarea class="textarea" name="seo_description" rows="2"></textarea></label>
+        </div>
+        ${eventFields}
       </div>
-      ${eventFields}
-      <section class="field field-wide block-editor-section">
-        <span class="field-label">Content</span>
-        <div id="block-editor" class="block-editor-root visual-editor-host"></div>
-      </section>
-      <details class="block-editor-advanced field-wide">
-        <summary>Advanced / Raw JSON</summary>
-        <label class="field"><span>Content JSON</span><textarea class="textarea code" name="content_json" id="content-json-raw" rows="8" placeholder='{"version":1,"blocks":[]}'></textarea></label>
-        <label class="field"><span>Generated HTML (read-only)</span><textarea class="textarea code" name="content_html" id="content-html-raw" rows="6" readonly></textarea></label>
-        <input type="hidden" name="draft_content_json" id="draft-content-json-raw" value="">
-        <input type="hidden" name="save_mode" id="content-save-mode" value="update">
-        <button type="button" class="btn btn-secondary btn-sm" id="apply-raw-json-btn">Apply raw JSON to editor</button>
-      </details>
-      <div class="form-actions ve-form-actions-legacy">
-        <button type="button" class="btn btn-secondary" data-action="save">Save</button>
-        <button type="button" class="btn btn-danger" data-action="delete">Delete</button>
-      </div>
-    </form>
-      </div>
-      <aside class="content-edit-sidebar" id="content-sidebar">
+
+      <aside id="content-sidebar" class="ve-workflow-source" hidden>
         <section class="admin-panel" id="workflow-panel">
           <h2 class="admin-panel-title">Workflow</h2>
           <div id="workflow-error" class="alert alert-error hidden"></div>
@@ -175,13 +168,23 @@ function editPageShell(type: string, label: string, isEvent = false): string {
           </details>
         </section>
         <section class="admin-panel" id="revisions-panel">
-          <h2 class="admin-panel-title">Revision history</h2>
+          <h2 class="admin-panel-title">Revisions</h2>
           <div id="revisions-error" class="alert alert-error hidden"></div>
           <div id="revisions-list" class="revisions-list"></div>
           <div id="revision-compare" class="revision-compare hidden"></div>
         </section>
       </aside>
-    </div>
+
+      <details class="block-editor-advanced" hidden>
+        <summary>Advanced / Raw JSON</summary>
+        <label class="field"><span>Content JSON</span><textarea class="textarea code" name="content_json" id="content-json-raw" rows="8" placeholder='{"version":1,"blocks":[]}'></textarea></label>
+        <label class="field"><span>Generated HTML (read-only)</span><textarea class="textarea code" name="content_html" id="content-html-raw" rows="6" readonly></textarea></label>
+        <input type="hidden" name="draft_content_json" id="draft-content-json-raw" value="">
+        <input type="hidden" name="save_mode" id="content-save-mode" value="update">
+        <button type="button" class="btn btn-secondary btn-sm" id="apply-raw-json-btn">Apply raw JSON to editor</button>
+      </details>
+      <button type="button" class="btn btn-danger" data-action="delete" id="content-delete-btn" hidden>Move to trash</button>
+    </form>
   `;
 }
 
@@ -564,6 +567,7 @@ export async function handleAdminRequest(
         page: "content-edit",
         user,
         navSections,
+        editorMode: true,
         data: { type: "pages", id: "new", label: "Page" },
         content: editPageShell("pages", "Page"),
       }),
@@ -578,6 +582,7 @@ export async function handleAdminRequest(
         page: "content-edit",
         user,
         navSections,
+        editorMode: true,
         data: { type: "pages", id: pageEdit[1], label: "Page" },
         content: editPageShell("pages", "Page"),
       }),
@@ -604,6 +609,7 @@ export async function handleAdminRequest(
         page: "content-edit",
         user,
         navSections,
+        editorMode: true,
         data: { type: "posts", id: "new", label: "Post" },
         content: editPageShell("posts", "Post"),
       }),
@@ -618,6 +624,7 @@ export async function handleAdminRequest(
         page: "content-edit",
         user,
         navSections,
+        editorMode: true,
         data: { type: "posts", id: postEdit[1], label: "Post" },
         content: editPageShell("posts", "Post"),
       }),
@@ -644,6 +651,7 @@ export async function handleAdminRequest(
         page: "content-edit",
         user,
         navSections,
+        editorMode: true,
         data: { type: "events", id: "new", label: "Event" },
         content: editPageShell("events", "Event", true),
       }),
@@ -658,6 +666,7 @@ export async function handleAdminRequest(
         page: "content-edit",
         user,
         navSections,
+        editorMode: true,
         data: { type: "events", id: eventEdit[1], label: "Event" },
         content: editPageShell("events", "Event", true),
       }),
@@ -907,6 +916,7 @@ export async function handleAdminRequest(
         page: "generic-content-edit",
         user,
         navSections,
+        editorMode: true,
         data: {
           type: `content/${typeKey}`,
           id: "new",
@@ -934,6 +944,7 @@ export async function handleAdminRequest(
         page: "generic-content-edit",
         user,
         navSections,
+        editorMode: true,
         data: {
           type: `content/${typeKey}`,
           id: genericEdit[2],

@@ -422,15 +422,18 @@ async function initContentEdit() {
           loadItemIntoForm(refreshed);
         });
       }
+      document.getElementById("content-delete-btn")?.removeAttribute("hidden");
     } catch (error) {
       showError(errorEl, error.message);
     }
   } else {
-    document.getElementById("content-sidebar")?.classList.add("hidden");
     if (window.JessMediaLibrary) {
       window.JessMediaLibrary.bindFeaturedImageField(form);
     }
   }
+
+  // Ensure Page inspector mounts document fields after initial load
+  blockEditor?.renderRight();
 
   form?.addEventListener("click", async (event) => {
     const target = event.target;

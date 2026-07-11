@@ -58,12 +58,12 @@ function renderMetadataSection(contentType: ContentTypeRecord): string {
 
   const fieldHtml = fields.map(renderMetadataField).join("\n");
   return `
-    <section class="admin-panel metadata-panel">
-      <h2 class="admin-panel-title">${escapeHtml(contentType.label)} fields</h2>
-      <div class="form-grid metadata-fields">
+    <div class="ve-page-section" data-page-section="metadata">
+      <h3 class="ve-page-section-title">${escapeHtml(contentType.label)} fields</h3>
+      <div class="metadata-fields">
         ${fieldHtml}
       </div>
-    </section>
+    </div>
   `;
 }
 
@@ -107,22 +107,25 @@ export function genericListPageShell(contentType: ContentTypeRecord): string {
 export function genericEditPageShell(contentType: ContentTypeRecord): string {
   const seoFields = supportsCapability(contentType, "seo")
     ? `
-        <label class="field"><span>SEO title</span><input class="input" name="seo_title"></label>
-        <label class="field field-wide"><span>SEO description</span><textarea class="textarea" name="seo_description" rows="2"></textarea></label>
+        <div class="ve-page-section" data-page-section="seo">
+          <h3 class="ve-page-section-title">SEO</h3>
+          <label class="field"><span>SEO title</span><input class="input" name="seo_title"></label>
+          <label class="field"><span>SEO description</span><textarea class="textarea" name="seo_description" rows="2"></textarea></label>
+        </div>
       `
     : "";
 
   const featuredImageField = supportsCapability(contentType, "featured_image")
     ? `
-        <div class="field field-wide featured-image-field" data-featured-image-field>
-          <span class="field-label">Featured image</span>
-          <input type="hidden" name="featured_image_id">
-          <div class="featured-image-preview muted" data-featured-image-preview>No image selected</div>
-          <div class="featured-image-actions">
-            <button type="button" class="btn btn-secondary btn-sm" data-featured-image-select>Select from library</button>
-            <button type="button" class="btn btn-secondary btn-sm hidden" data-featured-image-clear>Clear</button>
+          <div class="field featured-image-field" data-featured-image-field>
+            <span class="field-label">Featured image</span>
+            <input type="hidden" name="featured_image_id">
+            <div class="featured-image-preview muted" data-featured-image-preview>No image selected</div>
+            <div class="featured-image-actions">
+              <button type="button" class="btn btn-secondary btn-sm" data-featured-image-select>Set featured image</button>
+              <button type="button" class="btn btn-secondary btn-sm hidden" data-featured-image-clear>Clear</button>
+            </div>
           </div>
-        </div>
       `
     : "";
 
@@ -130,31 +133,11 @@ export function genericEditPageShell(contentType: ContentTypeRecord): string {
     ? `<label class="field"><span>Parent ID</span><input class="input" name="parent_id" placeholder="Parent entry ID"></label>`
     : "";
 
-  const templateField = `<label class="field"><span>Template</span><input class="input" name="template"></label>`;
-
-  const blockEditor = supportsCapability(contentType, "revisions") ||
-    contentType.supports_json !== false
-    ? `
-      <section class="field field-wide block-editor-section">
-        <span class="field-label">Content</span>
-        <div id="block-editor" class="block-editor-root visual-editor-host"></div>
-      </section>
-      <details class="block-editor-advanced field-wide">
-        <summary>Advanced / Raw JSON</summary>
-        <label class="field"><span>Content JSON</span><textarea class="textarea code" name="content_json" id="content-json-raw" rows="8" placeholder='{"version":1,"blocks":[]}'></textarea></label>
-        <label class="field"><span>Generated HTML (read-only)</span><textarea class="textarea code" name="content_html" id="content-html-raw" rows="6" readonly></textarea></label>
-        <input type="hidden" name="draft_content_json" id="draft-content-json-raw" value="">
-        <input type="hidden" name="save_mode" id="content-save-mode" value="update">
-        <button type="button" class="btn btn-secondary btn-sm" id="apply-raw-json-btn">Apply raw JSON to editor</button>
-      </details>
-    `
-    : "";
-
   const workflowSidebar =
     supportsCapability(contentType, "workflow") ||
     supportsCapability(contentType, "revisions")
       ? `
-      <aside class="content-edit-sidebar" id="content-sidebar">
+      <aside id="content-sidebar" class="ve-workflow-source" hidden>
         ${
           supportsCapability(contentType, "workflow")
             ? `
@@ -186,7 +169,7 @@ export function genericEditPageShell(contentType: ContentTypeRecord): string {
           supportsCapability(contentType, "revisions")
             ? `
         <section class="admin-panel" id="revisions-panel">
-          <h2 class="admin-panel-title">Revision history</h2>
+          <h2 class="admin-panel-title">Revisions</h2>
           <div id="revisions-error" class="alert alert-error hidden"></div>
           <div id="revisions-list" class="revisions-list"></div>
           <div id="revision-compare" class="revision-compare hidden"></div>
@@ -195,36 +178,43 @@ export function genericEditPageShell(contentType: ContentTypeRecord): string {
         }
       </aside>
     `
-      : "";
+      : `<aside id="content-sidebar" class="ve-workflow-source" hidden></aside>`;
 
   return `
-    <div class="content-edit-layout">
-      <div class="content-edit-main">
-    <form id="content-form" class="admin-form">
-      <div id="form-error" class="alert alert-error hidden"></div>
-      <div class="form-grid">
-        <label class="field"><span>Title</span><input class="input" name="title" required></label>
-        <label class="field"><span>Slug</span><input class="input" name="slug" required pattern="[a-z0-9-]+"></label>
-        <label class="field field-wide"><span>Change summary</span><input class="input" name="change_summary" placeholder="Brief note about this save (optional)"></label>
-        <label class="field"><span>Published at</span><input class="input" name="published_at" type="datetime-local"></label>
-        <label class="field field-wide"><span>Excerpt</span><textarea class="textarea" name="excerpt" rows="2"></textarea></label>
-        ${templateField}
-        <input type="hidden" name="status" value="draft">
-        ${featuredImageField}
-        ${parentField}
+    <form id="content-form" class="admin-form gutenberg-editor-form" data-content-type="${escapeHtml(contentType.type_key)}" data-content-label="${escapeHtml(contentType.label)}">
+      <div id="form-error" class="alert alert-error hidden ve-top-alert"></div>
+      <div id="block-editor" class="block-editor-root visual-editor-host"></div>
+
+      <div id="page-settings-fields" class="ve-page-fields-source" hidden>
+        <div class="ve-page-section" data-page-section="summary">
+          <h3 class="ve-page-section-title">Summary</h3>
+          <label class="field"><span>Title</span><input class="input" name="title" required></label>
+          <label class="field"><span>Slug</span><input class="input" name="slug" required pattern="[a-z0-9-]+"></label>
+          <label class="field"><span>Excerpt</span><textarea class="textarea" name="excerpt" rows="2"></textarea></label>
+          ${featuredImageField}
+          ${parentField}
+        </div>
+        <div class="ve-page-section" data-page-section="status">
+          <h3 class="ve-page-section-title">Status &amp; visibility</h3>
+          <input type="hidden" name="status" value="draft">
+          <label class="field"><span>Published at</span><input class="input" name="published_at" type="datetime-local"></label>
+          <label class="field"><span>Template</span><input class="input" name="template" placeholder="Default template"></label>
+          <label class="field"><span>Change summary</span><input class="input" name="change_summary" placeholder="Optional note for this save"></label>
+        </div>
         ${seoFields}
+        ${renderMetadataSection(contentType)}
       </div>
-      ${renderMetadataSection(contentType)}
-      ${blockEditor}
-      <div class="form-actions">
-        <button type="button" class="btn btn-secondary" data-action="save">Save draft</button>
-        <button type="button" class="btn btn-primary" data-action="publish">Publish</button>
-        <button type="button" class="btn btn-secondary" data-action="archive">Archive</button>
-        <button type="button" class="btn btn-danger" data-action="delete">Delete</button>
-      </div>
-    </form>
-      </div>
+
       ${workflowSidebar}
-    </div>
+      <details class="block-editor-advanced" hidden>
+        <summary>Advanced / Raw JSON</summary>
+        <label class="field"><span>Content JSON</span><textarea class="textarea code" name="content_json" id="content-json-raw" rows="8" placeholder='{"version":1,"blocks":[]}'></textarea></label>
+        <label class="field"><span>Generated HTML (read-only)</span><textarea class="textarea code" name="content_html" id="content-html-raw" rows="6" readonly></textarea></label>
+        <input type="hidden" name="draft_content_json" id="draft-content-json-raw" value="">
+        <input type="hidden" name="save_mode" id="content-save-mode" value="update">
+        <button type="button" class="btn btn-secondary btn-sm" id="apply-raw-json-btn">Apply raw JSON to editor</button>
+      </details>
+      <button type="button" class="btn btn-danger" data-action="delete" id="content-delete-btn" hidden>Move to trash</button>
+    </form>
   `;
 }

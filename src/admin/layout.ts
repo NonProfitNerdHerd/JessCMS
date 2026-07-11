@@ -38,6 +38,8 @@ export interface AdminPageOptions {
   content: string;
   data?: Record<string, string>;
   standalone?: boolean;
+  /** Hide admin chrome and fill the viewport (Gutenberg-style editor). */
+  editorMode?: boolean;
   extraScripts?: string[];
   navSections?: AdminNavSection[];
 }
@@ -91,6 +93,25 @@ ${scriptTags}
     : "Admin";
 
   const nav = renderNavSections(options.navSections);
+  const bodyClass = options.editorMode
+    ? "admin-body admin-body-editor"
+    : "admin-body";
+
+  if (options.editorMode) {
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${escapeHtml(options.title)} · JessCMS Admin</title>
+  <link rel="stylesheet" href="/admin/styles.css">
+${blockStyles}</head>
+<body class="${bodyClass}" data-page="${escapeHtml(options.page)}"${dataAttrs}>
+  ${options.content}
+${scriptTags}
+</body>
+</html>`;
+  }
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -100,7 +121,7 @@ ${scriptTags}
   <title>${escapeHtml(options.title)} · JessCMS Admin</title>
   <link rel="stylesheet" href="/admin/styles.css">
 ${blockStyles}</head>
-<body class="admin-body" data-page="${escapeHtml(options.page)}"${dataAttrs}>
+<body class="${bodyClass}" data-page="${escapeHtml(options.page)}"${dataAttrs}>
   <div class="admin-shell">
     <aside class="admin-sidebar">
       <div class="admin-brand">JessCMS</div>
