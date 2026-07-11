@@ -1327,13 +1327,30 @@
           return field("Raw HTML", `<textarea class="textarea code ve-input" data-prop="raw_html" rows="6">${R.escapeHtml(block.props.raw_html ?? block.props.raw ?? "")}</textarea>`);
         case "form": {
           const forms = global.__jessFormsList ?? [];
+          const selected = forms.find((form) => form.slug === block.props.form_slug);
           const options = forms
             .map(
               (form) =>
-                `<option value="${R.escapeHtml(form.slug)}" data-form-id="${R.escapeHtml(form.id)}" ${block.props.form_slug === form.slug ? "selected" : ""}>${R.escapeHtml(form.title)}</option>`,
+                `<option value="${R.escapeHtml(form.slug)}" data-form-id="${R.escapeHtml(form.id)}" ${block.props.form_slug === form.slug ? "selected" : ""}>${R.escapeHtml(form.title)}${form.status !== "active" ? " (unpublished)" : ""}</option>`,
             )
             .join("");
-          return field("Form", `<select class="input ve-input" data-prop="form_slug"><option value="">Select</option>${options}</select>`);
+          const warning =
+            selected && selected.status !== "active"
+              ? `<p class="alert alert-error">Selected form is not published (${R.escapeHtml(selected.status)}).</p>`
+              : "";
+          const editLink = selected
+            ? `<p><a href="/admin/forms/${R.escapeHtml(selected.id)}" target="_blank" rel="noopener">Edit selected form</a></p>`
+            : `<p class="muted"><a href="/admin/forms/new" target="_blank" rel="noopener">Create a new form</a></p>`;
+          return `
+            ${warning}
+            ${field("Form", `<select class="input ve-input" data-prop="form_slug"><option value="">Select a published form</option>${options}</select>`)}
+            ${editLink}
+            ${field("Show title", `<label class="checkbox-row"><input type="checkbox" class="ve-input" data-prop="show_title" ${block.props.show_title !== false ? "checked" : ""}> Display form title</label>`)}
+            ${field("Show description", `<label class="checkbox-row"><input type="checkbox" class="ve-input" data-prop="show_description" ${block.props.show_description !== false ? "checked" : ""}> Display description</label>`)}
+            ${field("Style", `<select class="input ve-input" data-prop="display_style"><option value="embedded" ${block.props.display_style !== "card" ? "selected" : ""}>Embedded</option><option value="card" ${block.props.display_style === "card" ? "selected" : ""}>Card</option></select>`)}
+            ${field("Alignment", `<select class="input ve-input" data-prop="alignment"><option value="left" ${block.props.alignment !== "center" && block.props.alignment !== "right" ? "selected" : ""}>Left</option><option value="center" ${block.props.alignment === "center" ? "selected" : ""}>Center</option><option value="right" ${block.props.alignment === "right" ? "selected" : ""}>Right</option></select>`)}
+            ${field("Width", `<select class="input ve-input" data-prop="width"><option value="100%" ${block.props.width === "100%" || !block.props.width ? "selected" : ""}>Full</option><option value="720px" ${block.props.width === "720px" ? "selected" : ""}>720px</option><option value="560px" ${block.props.width === "560px" ? "selected" : ""}>560px</option><option value="400px" ${block.props.width === "400px" ? "selected" : ""}>400px</option></select>`)}
+          `;
         }
         case "hero":
         case "call_to_action":

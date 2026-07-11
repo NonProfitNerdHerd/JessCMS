@@ -24,6 +24,7 @@
     "test:marketing-blocks": "node scripts/marketing-blocks-unit-test.mjs",
     "search:rebuild": "node scripts/search-rebuild.mjs",
     "test:forms": "node scripts/forms-smoke-test.mjs",
+    "test:forms-platform": "node scripts/forms-platform-unit-test.mjs",
     "test:workflow": "node scripts/workflow-smoke-test.mjs",
     "test:extensibility": "node scripts/extensibility-smoke-test.mjs",
     "test:runtime": "node scripts/runtime-smoke-test.mjs",

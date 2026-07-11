@@ -2,25 +2,38 @@ import { isAuthUser, requirePermission } from "../../auth";
 import { getClientIp, writeAuditLog } from "../../db/audit";
 import {
   badRequest,
+  conflict,
   created,
   notFound,
   ok,
   serverError,
 } from "../../lib/response";
+import { flattenDefinitionFields } from "./definition";
+import { getFieldTypeDefinitions } from "./field-registry";
 import {
+  dispatchAdminNotifications,
+  resolveConfirmation,
+} from "./notifications";
+import {
+  ConflictError,
   createForm,
   createFormField,
   createSubmission,
   deleteForm,
   deleteFormField,
   deleteSubmission,
+  duplicateForm,
   getFormWithFields,
   getSubmissionWithValues,
   listFormSubmissions,
+  listFormVersions,
   listForms,
   NotFoundError,
+  publishForm,
   readJsonBody,
   reorderFormFields,
+  restoreFormVersion,
+  saveFormDraft,
   serializePublicForm,
   updateForm,
   updateFormField,
@@ -28,14 +41,18 @@ import {
   ValidationError,
 } from "./repository";
 import { checkSubmissionSpam, getSubmissionIp, hashIpAddress } from "./security";
+import type { FormDefinition, FormDefinitionField } from "./definition";
 import { validateSubmissionValues } from "./validation";
 
 function handleError(error: unknown): Response {
   if (error instanceof ValidationError) {
     return badRequest("Validation failed", error.errors);
   }
+  if (error instanceof ConflictError) {
+    return conflict(error.message);
+  }
   if (error instanceof NotFoundError) {
-    return notFound();
+    return notFound(error.message);
   }
   console.error(error);
   return serverError();
@@ -90,6 +107,7 @@ export async function handleCreateForm(request: Request, env: Env): Promise<Resp
         description: body.description ? String(body.description) : null,
         status: body.status ? String(body.status) : undefined,
         settings: body.settings as Record<string, unknown> | undefined,
+        template: body.template ? String(body.template) : undefined,
       },
       authResult.id,
     );
@@ -118,18 +136,23 @@ export async function handleUpdateForm(
 
   try {
     const body = await readJsonBody(request);
-    const form = await updateForm(env.DB, params.id, {
-      title: body.title !== undefined ? String(body.title) : undefined,
-      slug: body.slug !== undefined ? String(body.slug) : undefined,
-      description:
-        body.description !== undefined
-          ? body.description
-            ? String(body.description)
-            : null
-          : undefined,
-      status: body.status !== undefined ? String(body.status) : undefined,
-      settings: body.settings as Record<string, unknown> | undefined,
-    });
+    const form = await updateForm(
+      env.DB,
+      params.id,
+      {
+        title: body.title !== undefined ? String(body.title) : undefined,
+        slug: body.slug !== undefined ? String(body.slug) : undefined,
+        description:
+          body.description !== undefined
+            ? body.description
+              ? String(body.description)
+              : null
+            : undefined,
+        status: body.status !== undefined ? String(body.status) : undefined,
+        settings: body.settings as Record<string, unknown> | undefined,
+      },
+      authResult.id,
+    );
 
     await writeAuditLog(env.DB, {
       actorId: authResult.id,
@@ -143,6 +166,194 @@ export async function handleUpdateForm(
   } catch (error) {
     return handleError(error);
   }
+}
+
+export async function handleSaveFormDraft(
+  request: Request,
+  env: Env,
+  params: Record<string, string>,
+): Promise<Response> {
+  const authResult = await requirePermission(request, env, "forms:update");
+  if (!isAuthUser(authResult)) return authResult;
+
+  try {
+    const body = await readJsonBody(request);
+    if (!body.definition || typeof body.definition !== "object") {
+      return badRequest("definition is required");
+    }
+
+    const form = await saveFormDraft(
+      env.DB,
+      params.id,
+      {
+        definition: body.definition as FormDefinition,
+        title: body.title !== undefined ? String(body.title) : undefined,
+        slug: body.slug !== undefined ? String(body.slug) : undefined,
+        description:
+          body.description !== undefined
+            ? body.description
+              ? String(body.description)
+              : null
+            : undefined,
+        expected_draft_version:
+          body.expected_draft_version !== undefined
+            ? Number(body.expected_draft_version)
+            : undefined,
+        change_note: body.change_note ? String(body.change_note) : undefined,
+      },
+      authResult.id,
+    );
+
+    await writeAuditLog(env.DB, {
+      actorId: authResult.id,
+      action: "update",
+      entityType: "form_draft",
+      entityId: form.id,
+      metadata: { draft_version: form.draft_version },
+      ipAddress: getClientIp(request),
+    });
+
+    return ok(form);
+  } catch (error) {
+    return handleError(error);
+  }
+}
+
+export async function handlePublishForm(
+  request: Request,
+  env: Env,
+  params: Record<string, string>,
+): Promise<Response> {
+  const authResult = await requirePermission(request, env, "forms:publish");
+  if (!isAuthUser(authResult)) return authResult;
+
+  try {
+    const body = await readJsonBody(request).catch(() => ({} as Record<string, unknown>));
+    const form = await publishForm(
+      env.DB,
+      params.id,
+      authResult.id,
+      body.change_note ? String(body.change_note) : undefined,
+    );
+
+    await writeAuditLog(env.DB, {
+      actorId: authResult.id,
+      action: "publish",
+      entityType: "form",
+      entityId: form.id,
+      metadata: { published_version: form.published_version },
+      ipAddress: getClientIp(request),
+    });
+
+    return ok(form);
+  } catch (error) {
+    return handleError(error);
+  }
+}
+
+export async function handleDuplicateForm(
+  request: Request,
+  env: Env,
+  params: Record<string, string>,
+): Promise<Response> {
+  const authResult = await requirePermission(request, env, "forms:create");
+  if (!isAuthUser(authResult)) return authResult;
+
+  try {
+    const form = await duplicateForm(env.DB, params.id, authResult.id);
+    await writeAuditLog(env.DB, {
+      actorId: authResult.id,
+      action: "duplicate",
+      entityType: "form",
+      entityId: form.id,
+      metadata: { source_id: params.id },
+      ipAddress: getClientIp(request),
+    });
+    return created(form);
+  } catch (error) {
+    return handleError(error);
+  }
+}
+
+export async function handleListFormVersions(
+  request: Request,
+  env: Env,
+  params: Record<string, string>,
+): Promise<Response> {
+  const authResult = await requirePermission(request, env, "forms:read");
+  if (!isAuthUser(authResult)) return authResult;
+
+  try {
+    const versions = await listFormVersions(env.DB, params.id);
+    return ok({ items: versions });
+  } catch (error) {
+    return handleError(error);
+  }
+}
+
+export async function handleRestoreFormVersion(
+  request: Request,
+  env: Env,
+  params: Record<string, string>,
+): Promise<Response> {
+  const authResult = await requirePermission(request, env, "forms:update");
+  if (!isAuthUser(authResult)) return authResult;
+
+  try {
+    const form = await restoreFormVersion(
+      env.DB,
+      params.id,
+      params.versionId,
+      authResult.id,
+    );
+    return ok(form);
+  } catch (error) {
+    return handleError(error);
+  }
+}
+
+export async function handleExportFormDefinition(
+  request: Request,
+  env: Env,
+  params: Record<string, string>,
+): Promise<Response> {
+  const authResult = await requirePermission(request, env, "forms:read");
+  if (!isAuthUser(authResult)) return authResult;
+
+  try {
+    const form = await getFormWithFields(env.DB, { id: params.id });
+    if (!form?.definition) return notFound();
+
+    const exported = {
+      schemaVersion: form.definition.schemaVersion,
+      title: form.title,
+      description: form.description,
+      definition: {
+        ...form.definition,
+        settings: {
+          ...form.definition.settings,
+          notifications: (form.definition.settings.notifications ?? []).map((n) => ({
+            ...n,
+            recipient: n.recipient ? "[redacted]" : "",
+            reply_to: n.reply_to ? "[redacted]" : undefined,
+          })),
+        },
+      },
+    };
+
+    return ok(exported);
+  } catch (error) {
+    return handleError(error);
+  }
+}
+
+export async function handleListFieldTypes(
+  request: Request,
+  env: Env,
+): Promise<Response> {
+  const authResult = await requirePermission(request, env, "forms:read");
+  if (!isAuthUser(authResult)) return authResult;
+  return ok({ items: getFieldTypeDefinitions() });
 }
 
 export async function handleDeleteForm(
@@ -188,6 +399,7 @@ export async function handleCreateFormField(
       sort_order: body.sort_order !== undefined ? Number(body.sort_order) : undefined,
       options: body.options as { choices?: Array<{ label: string; value: string }> },
       validation: body.validation as Record<string, unknown>,
+      settings: body.settings as Record<string, unknown>,
     });
     return created(field);
   } catch (error) {
@@ -225,6 +437,7 @@ export async function handleUpdateFormField(
       sort_order: body.sort_order !== undefined ? Number(body.sort_order) : undefined,
       options: body.options as { choices?: Array<{ label: string; value: string }> },
       validation: body.validation as Record<string, unknown>,
+      settings: body.settings as Record<string, unknown>,
     });
     return ok(field);
   } catch (error) {
@@ -372,6 +585,10 @@ export async function handlePublicSubmitForm(
 
     const body = await readJsonBody<Record<string, unknown>>(request);
     const values = (body.values as Record<string, unknown> | undefined) ?? body;
+    const idempotencyKey =
+      typeof body.idempotency_key === "string"
+        ? body.idempotency_key
+        : request.headers.get("Idempotency-Key");
 
     const spam = checkSubmissionSpam({
       honeypotValue: body._jess_hp ?? values._jess_hp,
@@ -381,10 +598,13 @@ export async function handlePublicSubmitForm(
       turnstileEnabled: Boolean(form.settings.turnstile_enabled),
     });
 
+    const confirmation = resolveConfirmation(form.settings);
+
     if (spam.isSpam) {
       return ok({
         success: true,
-        message: form.settings.success_message ?? "Thank you for your submission.",
+        message: confirmation.message,
+        confirmation,
       });
     }
 
@@ -399,6 +619,16 @@ export async function handlePublicSubmitForm(
       (env as Env & { FORMS_IP_PEPPER?: string }).FORMS_IP_PEPPER,
     );
 
+    const publishedVersionId = form.published_version
+      ? (
+          await env.DB.prepare(
+            `SELECT id FROM form_versions WHERE form_id = ? AND version_number = ? AND is_published = 1 LIMIT 1`,
+          )
+            .bind(form.id, form.published_version)
+            .first<{ id: string }>()
+        )?.id ?? null
+      : null;
+
     const { submissionId } = await createSubmission(
       env.DB,
       form.id,
@@ -409,9 +639,38 @@ export async function handlePublicSubmitForm(
         turnstileVerified: spam.turnstileVerified,
         metadata: spam.reason ? { spam_check: spam.reason } : undefined,
         status: "new",
+        formVersionId: publishedVersionId,
+        referrer: typeof body.referrer === "string" ? body.referrer : request.headers.get("Referer"),
+        pageUrl: typeof body.page_url === "string" ? body.page_url : null,
+        idempotencyKey,
+        completionMs:
+          typeof body.completion_ms === "number" ? body.completion_ms : null,
       },
       form.fields,
     );
+
+    const definitionFields = form.definition
+      ? flattenDefinitionFields(form.definition)
+      : form.fields.map((field) => ({
+          id: field.id,
+          key: field.field_key,
+          type: field.field_type,
+          version: 1,
+          label: field.label,
+          required: Boolean(field.required),
+        }));
+
+    try {
+      await dispatchAdminNotifications(
+        env.DB,
+        form,
+        submissionId,
+        values,
+        definitionFields as FormDefinitionField[],
+      );
+    } catch (notifyError) {
+      console.error("Form notification failed", notifyError);
+    }
 
     await writeAuditLog(env.DB, {
       actorId: null,
@@ -425,7 +684,8 @@ export async function handlePublicSubmitForm(
     return created({
       success: true,
       submission_id: submissionId,
-      message: form.settings.success_message ?? "Thank you for your submission.",
+      message: confirmation.message,
+      confirmation,
     });
   } catch (error) {
     return handleError(error);

@@ -983,10 +983,11 @@ function readFormsMeta(form) {
     title: data.title,
     slug: data.slug,
     description: data.description,
-    status: data.status,
+    status: data.status || "draft",
+    template: data.template || "blank",
     settings: {
-      success_message: data.success_message,
-      submit_label: data.submit_label,
+      success_message: data.success_message || "Thank you for your submission.",
+      submit_label: data.submit_label || "Submit",
     },
   };
 }
@@ -1025,19 +1026,23 @@ async function loadFormsList() {
           .map(
             (item) => `
               <tr>
-                <td>${escapeHtml(item.title)}</td>
-                <td><code>${escapeHtml(item.slug)}</code></td>
-                <td><span class="status-badge">${escapeHtml(item.status)}</span></td>
+                <td>
+                  <a href="/admin/forms/${item.id}"><strong>${escapeHtml(item.title)}</strong></a>
+                  <div class="muted"><code>${escapeHtml(item.slug)}</code></div>
+                </td>
+                <td><span class="status-badge">${escapeHtml(item.status === "active" ? "published" : item.status)}</span></td>
+                <td>${escapeHtml(item.submission_count ?? 0)}</td>
+                <td>${item.last_submission_at ? formatDate(item.last_submission_at) : "—"}</td>
                 <td>${formatDate(item.updated_at)}</td>
                 <td>
                   <a href="/admin/forms/${item.id}">Edit</a>
-                  · <a href="/admin/forms/${item.id}/submissions">Submissions</a>
+                  · <a href="/admin/forms/${item.id}/submissions">Entries</a>
                 </td>
               </tr>
             `,
           )
           .join("")
-      : `<tr><td colspan="5" class="muted">No forms found.</td></tr>`;
+      : `<tr><td colspan="6" class="muted">No forms yet. <a href="/admin/forms/new">Create your first form</a>.</td></tr>`;
 
     const pagination = document.getElementById("forms-pagination");
     if (pagination) {
@@ -1051,7 +1056,7 @@ async function loadFormsList() {
     }
   } catch (error) {
     showError(errorEl, error.message);
-    tbody.innerHTML = `<tr><td colspan="5" class="muted">Failed to load forms.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" class="muted">Failed to load forms.</td></tr>`;
   }
 }
 
@@ -1072,62 +1077,6 @@ async function initFormsList() {
   await loadFormsList();
 }
 
-async function renderFieldsList(formId, fields) {
-  const list = document.getElementById("fields-list");
-  const FB = window.JessFormsBuilder;
-  if (!list || !FB) return;
-
-  if (!fields.length) {
-    list.innerHTML = `<p class="muted">No fields yet. Add your first field.</p>`;
-    return;
-  }
-
-  list.innerHTML = fields.map((field, index) => FB.renderFieldCard(field, index, fields.length)).join("");
-
-  list.querySelectorAll("[data-save-field]").forEach((button) => {
-    button.addEventListener("click", async () => {
-      const card = button.closest(".forms-field-card");
-      const fieldId = card?.dataset.fieldId;
-      const payload = FB.readFieldCard(card);
-      await api(`/api/forms/${formId}/fields/${fieldId}`, {
-        method: "PUT",
-        body: JSON.stringify(payload),
-      });
-      const form = await api(`/api/forms/${formId}`);
-      await renderFieldsList(formId, form.fields ?? []);
-    });
-  });
-
-  list.querySelectorAll("[data-delete-field]").forEach((button) => {
-    button.addEventListener("click", async () => {
-      if (!confirm("Delete this field?")) return;
-      const card = button.closest(".forms-field-card");
-      const fieldId = card?.dataset.fieldId;
-      await api(`/api/forms/${formId}/fields/${fieldId}`, { method: "DELETE" });
-      const form = await api(`/api/forms/${formId}`);
-      await renderFieldsList(formId, form.fields ?? []);
-    });
-  });
-
-  list.querySelectorAll("[data-move]").forEach((button) => {
-    button.addEventListener("click", async () => {
-      const card = button.closest(".forms-field-card");
-      const fieldId = card?.dataset.fieldId;
-      const ids = fields.map((field) => field.id);
-      const index = ids.indexOf(fieldId);
-      const target = button.dataset.move === "up" ? index - 1 : index + 1;
-      if (target < 0 || target >= ids.length) return;
-      [ids[index], ids[target]] = [ids[target], ids[index]];
-      await api(`/api/forms/${formId}/fields/reorder`, {
-        method: "POST",
-        body: JSON.stringify({ field_ids: ids }),
-      });
-      const form = await api(`/api/forms/${formId}`);
-      await renderFieldsList(formId, form.fields ?? []);
-    });
-  });
-}
-
 async function initFormsEdit() {
   document.getElementById("logout-btn")?.addEventListener("click", logout);
 
@@ -1137,63 +1086,44 @@ async function initFormsEdit() {
   const id = document.body.dataset.id;
   const isNew = id === "new";
 
-  if (!isNew) {
-    try {
-      const record = await api(`/api/forms/${id}`);
-      fillFormsMeta(form, record);
-      document.getElementById("view-submissions-link")?.setAttribute(
-        "href",
-        `/admin/forms/${id}/submissions`,
-      );
-      await renderFieldsList(id, record.fields ?? []);
-    } catch (error) {
-      showError(errorEl, error.message);
-    }
-  }
-
-  document.getElementById("add-field-btn")?.addEventListener("click", async () => {
-    hideError(errorEl);
-    const label = prompt("Field label");
-    if (!label) return;
-    await api(`/api/forms/${id}/fields`, {
-      method: "POST",
-      body: JSON.stringify({ label, field_type: "text", required: false }),
-    });
-    const record = await api(`/api/forms/${id}`);
-    await renderFieldsList(id, record.fields ?? []);
-  });
-
-  document.getElementById("delete-form-btn")?.addEventListener("click", async () => {
-    if (!confirm("Delete this form and all submissions?")) return;
-    await api(`/api/forms/${id}`, { method: "DELETE" });
-    window.location.href = "/admin/forms";
-  });
-
-  form?.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    hideError(errorEl);
-    hideSuccess(successEl);
-    const payload = readFormsMeta(form);
-
-    try {
-      if (isNew) {
+  if (isNew) {
+    form?.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      hideError(errorEl);
+      const payload = readFormsMeta(form);
+      try {
         const created = await api("/api/forms", {
           method: "POST",
           body: JSON.stringify(payload),
         });
         window.location.href = `/admin/forms/${created.id}`;
-        return;
+      } catch (error) {
+        showError(errorEl, error.message);
       }
+    });
+    return;
+  }
 
-      await api(`/api/forms/${id}`, {
-        method: "PUT",
-        body: JSON.stringify(payload),
-      });
-      showSuccess(successEl, "Form saved.");
-    } catch (error) {
-      showError(errorEl, error.message);
-    }
+  const FB = window.JessFormsBuilder;
+  if (!FB?.createBuilder) {
+    showError(errorEl, "Form builder failed to load.");
+    return;
+  }
+
+  const builder = FB.createBuilder({
+    api,
+    formId: id,
+    showError,
+    showSuccess,
+    hideError,
+    hideSuccess,
   });
+
+  try {
+    await builder.load();
+  } catch (error) {
+    showError(errorEl, error.message);
+  }
 }
 
 async function initFormsSubmissions() {
@@ -1226,6 +1156,7 @@ async function initFormsSubmissions() {
           .map(
             (item) => `
               <tr>
+                <td>${escapeHtml(item.sequence_number ?? "—")}</td>
                 <td>${formatDate(item.created_at)}</td>
                 <td><span class="status-badge">${escapeHtml(item.status)}</span></td>
                 <td><code>${escapeHtml(item.id)}</code></td>
@@ -1234,7 +1165,7 @@ async function initFormsSubmissions() {
             `,
           )
           .join("")
-      : `<tr><td colspan="4" class="muted">No submissions yet.</td></tr>`;
+      : `<tr><td colspan="5" class="muted">No submissions yet.</td></tr>`;
   } catch (error) {
     showError(errorEl, error.message);
   }

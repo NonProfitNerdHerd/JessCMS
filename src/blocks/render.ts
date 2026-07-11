@@ -242,7 +242,15 @@ export function defaultBlockProps(type: string): Record<string, unknown> {
     case "html":
       return { raw_html: "" };
     case "form":
-      return { form_id: "", form_slug: "", display_style: "embedded" };
+      return {
+        form_id: "",
+        form_slug: "",
+        display_style: "embedded",
+        show_title: true,
+        show_description: true,
+        alignment: "left",
+        width: "100%",
+      };
     case "columns":
       return { columnCount: 2, gap: "1.5rem", ratios: ["50%", "50%"] };
     case "column":

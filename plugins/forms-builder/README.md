@@ -1,5 +1,13 @@
 # Forms Builder
 
-Contact forms and surveys powered by the `forms-builder` plugin.
+See **[Forms Platform](../docs/forms-platform.md)** for the current architecture (Phases 1–4).
 
-See [docs/forms-builder.md](../../docs/forms-builder.md) for full documentation.
+This plugin provides:
+
+- Versioned form definitions (JSON + field mirror)
+- Visual form builder in admin
+- Public embed runtime + Form block
+- Submissions inbox
+- Admin email notifications (provider interface)
+
+Enable or disable from **Admin → Plugins**.

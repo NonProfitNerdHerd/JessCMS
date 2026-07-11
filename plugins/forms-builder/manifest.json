@@ -13,6 +13,9 @@
     "forms:create",
     "forms:update",
     "forms:delete",
+    "forms:publish",
+    "forms:export",
+    "forms:notifications",
     "forms:submissions:read",
     "forms:submissions:update"
   ],

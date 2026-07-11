@@ -744,6 +744,7 @@ export async function handleAdminRequest(
         navSections,
         data: { id: formEdit[1] },
         content: formsEditShell(false),
+        editorMode: true,
       }),
     );
   }
