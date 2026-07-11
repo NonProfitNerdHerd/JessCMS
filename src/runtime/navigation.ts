@@ -18,7 +18,9 @@ export interface AdminNavSection {
 
 const CORE_CONTENT_ORDER = ["page", "post", "event", "form"] as const;
 
-const SITE_NAV_HREFS = new Set([
+/** Hrefs owned by hardcoded Site / System / main sections — never show in Extensions. */
+const RESERVED_NAV_HREFS = new Set([
+  "/admin",
   "/admin/dashboard",
   "/admin/media",
   "/admin/settings/theme",
@@ -27,15 +29,26 @@ const SITE_NAV_HREFS = new Set([
   "/admin/users",
   "/admin/roles",
   "/admin/audit",
+  "/admin/search",
+  "/admin/seo",
 ]);
+
+function normalizeHref(href: string): string {
+  const trimmed = href.trim();
+  if (trimmed.length > 1 && trimmed.endsWith("/")) {
+    return trimmed.slice(0, -1);
+  }
+  return trimmed;
+}
 
 function dedupeNavItems(items: AdminNavItem[]): AdminNavItem[] {
   const seen = new Set<string>();
   const result: AdminNavItem[] = [];
   for (const item of items) {
-    if (seen.has(item.href)) continue;
-    seen.add(item.href);
-    result.push(item);
+    const href = normalizeHref(item.href);
+    if (seen.has(href)) continue;
+    seen.add(href);
+    result.push({ ...item, href });
   }
   return result;
 }
@@ -44,7 +57,7 @@ export function navigationToAdminItems(
   navigation: RuntimeNavigationItem[],
 ): AdminNavItem[] {
   return navigation.map((item) => ({
-    href: item.href,
+    href: normalizeHref(item.href),
     label: item.label,
     icon: item.icon,
     permission: item.permission,
@@ -54,13 +67,13 @@ export function navigationToAdminItems(
 type RuntimeContentType = RuntimeSnapshot["content_types"][number];
 
 function contentTypeHref(type: RuntimeContentType): string {
-  if (type.admin_base) return type.admin_base;
+  if (type.admin_base) return normalizeHref(type.admin_base);
   if (isLegacyContentType(type.type_key)) {
     if (type.type_key === "page") return "/admin/pages";
     if (type.type_key === "form") return "/admin/forms";
     return `/admin/${type.type_key}s`;
   }
-  return genericAdminBase(type.type_key);
+  return normalizeHref(genericAdminBase(type.type_key));
 }
 
 function sortContentTypes(types: RuntimeContentType[]): RuntimeContentType[] {
@@ -96,7 +109,7 @@ export async function getAdminNavigation(
     snapshot.content_types.filter((entry) => entry.enabled !== false),
   )) {
     const href = contentTypeHref(type);
-    if (contentTypeHrefs.has(href)) continue;
+    if (contentTypeHrefs.has(href) || RESERVED_NAV_HREFS.has(href)) continue;
     contentTypeHrefs.add(href);
     contentItems.push({
       href,
@@ -105,12 +118,16 @@ export async function getAdminNavigation(
     });
   }
 
+  const reservedHrefs = new Set<string>([
+    ...RESERVED_NAV_HREFS,
+    ...contentTypeHrefs,
+  ]);
+
   const extensionItems = dedupeNavItems(
     navigationToAdminItems(snapshot.navigation).filter(
       (item) =>
         canAccessNavItem(user, item) &&
-        !contentTypeHrefs.has(item.href) &&
-        !SITE_NAV_HREFS.has(item.href),
+        !reservedHrefs.has(normalizeHref(item.href)),
     ),
   );
 
@@ -161,5 +178,17 @@ export async function getAdminNavigation(
     });
   }
 
-  return sections;
+  // Final safety net: one link per href across the whole sidebar.
+  const seen = new Set<string>();
+  return sections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) => {
+        const href = normalizeHref(item.href);
+        if (seen.has(href)) return false;
+        seen.add(href);
+        return true;
+      }),
+    }))
+    .filter((section) => section.items.length > 0);
 }

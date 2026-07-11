@@ -62,7 +62,14 @@ assert("includes admin routes", (routes.body.data?.items ?? []).some((r) => r.ty
 
 const navigation = await req("/api/runtime/navigation");
 assert("runtime navigation", navigation.status === 200);
-assert("includes pages nav", (navigation.body.data?.items ?? []).some((n) => n.href === "/admin/pages"));
+assert(
+  "runtime navigation excludes core content duplicates",
+  !(navigation.body.data?.items ?? []).some((n) => n.href === "/admin/pages"),
+);
+assert(
+  "runtime navigation excludes theme settings duplicate",
+  !(navigation.body.data?.items ?? []).some((n) => n.href === "/admin/settings/theme"),
+);
 
 const settings = await req("/api/runtime/settings");
 assert("runtime settings", settings.status === 200);

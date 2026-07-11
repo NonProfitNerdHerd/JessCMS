@@ -147,21 +147,21 @@ const workflow = await req(`/api/content/chase/${chaseId}/workflow`, {
 });
 assert("workflow state works for chase", workflow.status === 200);
 
-const navEnabled = await req("/api/runtime/navigation");
-const navItems = navEnabled.body.data?.items ?? navEnabled.body.data ?? [];
+const typesEnabled = await req("/api/runtime/content-types");
+const typeItems = typesEnabled.body.data?.items ?? typesEnabled.body.data ?? [];
 assert(
-  "enabled plugin shows chase admin navigation",
-  navItems.some((item) => item.href === "/admin/content/chase"),
+  "enabled plugin shows chase content type",
+  typeItems.some((item) => item.type_key === "chase" && item.admin_base === "/admin/content/chase"),
 );
 
 await req("/api/plugins/storm-chaser-example/disable", { method: "POST" });
 await req("/api/runtime/sync", { method: "POST" });
 
-const navDisabled = await req("/api/runtime/navigation");
-const navItemsDisabled = navDisabled.body.data?.items ?? navDisabled.body.data ?? [];
+const typesDisabled = await req("/api/runtime/content-types");
+const typeItemsDisabled = typesDisabled.body.data?.items ?? typesDisabled.body.data ?? [];
 assert(
-  "disabling plugin hides chase admin navigation",
-  !navItemsDisabled.some((item) => item.href === "/admin/content/chase"),
+  "disabling plugin hides chase content type from runtime",
+  !typeItemsDisabled.some((item) => item.type_key === "chase"),
 );
 
 const afterDisable = await req(`/api/content/chase/${chaseId}`);

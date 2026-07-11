@@ -176,8 +176,25 @@ function registerManifestContributions(manifest: PluginManifest, enabled: boolea
     );
   }
 
-  const adminPages = manifest.admin_pages ?? manifest.admin_routes ?? [];
-  for (const page of adminPages) {
+  // Legacy admin_routes: register as routes only (not nav). Explicit admin_pages
+  // are extension tools and may appear in the sidebar.
+  const legacyAdminRoutes = manifest.admin_routes ?? [];
+  for (const page of legacyAdminRoutes) {
+    const path = `/admin${page.path.startsWith("/") ? page.path : `/${page.path}`}`;
+    routeRegistry.register(
+      {
+        key: routeKey("GET", path, "admin"),
+        method: "GET",
+        path,
+        type: "admin",
+        plugin_id: manifest.id,
+        permission: page.permission ?? null,
+      },
+      manifest.id,
+    );
+  }
+
+  for (const page of manifest.admin_pages ?? []) {
     const path = `/admin${page.path.startsWith("/") ? page.path : `/${page.path}`}`;
     routeRegistry.register(
       {
@@ -251,19 +268,8 @@ function registerManifestContributions(manifest: PluginManifest, enabled: boolea
         manifest.id,
       );
     }
-    if (ct.admin_base) {
-      navigationRegistry.register(
-        {
-          key: `${manifest.id}:ct:${ct.type_key}`,
-          label: ct.plural_label,
-          href: ct.admin_base,
-          icon: ct.icon ?? "📄",
-          plugin_id: manifest.id,
-          sort_order: 100,
-        },
-        manifest.id,
-      );
-    }
+    // Content-type admin links are built by getAdminNavigation() from the
+    // content type registry — do not also register them as plugin nav items.
   }
 
   for (const item of manifest.navigation?.items ?? []) {
@@ -300,19 +306,9 @@ function registerManifestContributions(manifest: PluginManifest, enabled: boolea
       // already registered above
     }
 
-    const settingsPath = `/admin/settings/${page.slug}`;
-    navigationRegistry.register(
-      {
-        key: `${manifest.id}:settings-nav:${page.slug}`,
-        label: page.label,
-        href: settingsPath,
-        icon: page.icon ?? "⚙",
-        plugin_id: manifest.id,
-        permission: page.permission ?? "settings:read",
-        sort_order: 200,
-      },
-      manifest.id,
-    );
+    // Settings pages are registered in settingsRegistry only. Core Theme is
+    // linked from the Site section; generic settings admin UI is not wired yet,
+    // so auto-adding sidebar links creates duplicates and dead routes.
   }
 
   if (manifest.settings_schema && !manifest.settings_pages?.length) {

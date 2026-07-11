@@ -90,6 +90,9 @@ export interface PluginManifest extends BasePluginManifest {
   dependencies?: VersionConstraint[];
   optional_dependencies?: VersionConstraint[];
   routes?: PluginRouteDefinition[];
+  /** Legacy route declarations — registered as routes only, not sidebar nav. */
+  admin_routes?: PluginAdminPageDefinition[];
+  /** Explicit extension admin tools — appear in the Extensions sidebar section. */
   admin_pages?: PluginAdminPageDefinition[];
   settings_pages?: PluginSettingsPageDefinition[];
   scheduled_jobs?: PluginScheduledJobDefinition[];
