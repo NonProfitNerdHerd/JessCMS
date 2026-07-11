@@ -27,3 +27,15 @@ export { renderPublicBlock, renderPublicBlocks, registerBlockRenderer } from "./
 export type { BlockRenderer } from "./registry";
 export { validateContentDocument, canPublishDocument } from "./validate";
 export { prepareContentBody } from "./persist";
+export { migrateBlock, migrateDocument } from "./migrate";
+export {
+  defaultMarketingProps,
+  normalizeMarketingProps,
+  renderMarketingBlock,
+} from "./marketing";
+export {
+  resolveColor,
+  resolveResponsive,
+  normalizeAction,
+  createItemId,
+} from "./shared-props";

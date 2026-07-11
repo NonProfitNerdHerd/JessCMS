@@ -21,6 +21,7 @@
     "test:search": "node scripts/search-smoke-test.mjs",
     "test:permissions": "node scripts/permissions-smoke-test.mjs",
     "test:visual-editor": "node scripts/visual-editor-smoke-test.mjs",
+    "test:marketing-blocks": "node scripts/marketing-blocks-unit-test.mjs",
     "search:rebuild": "node scripts/search-rebuild.mjs",
     "test:forms": "node scripts/forms-smoke-test.mjs",
     "test:workflow": "node scripts/workflow-smoke-test.mjs",

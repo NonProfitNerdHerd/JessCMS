@@ -8,11 +8,272 @@
     layout: "Layout",
     design: "Design",
     content: "Content",
+    marketing: "Marketing",
     advanced: "Advanced",
   };
 
   function field(label, html) {
     return `<label class="block-field"><span>${label}</span>${html}</label>`;
+  }
+
+  function actionFields(prefix, action = {}) {
+    return `
+      <div class="ve-control-group">
+        <h4 class="ve-control-group-title">${prefix === "primaryAction" ? "Primary button" : "Secondary button"}</h4>
+        ${field("Label", `<input class="input ve-input" data-nested="${prefix}.label" value="${R.escapeHtml(action.label ?? "")}">`)}
+        ${field("URL", `<input class="input ve-input" data-nested="${prefix}.url" value="${R.escapeHtml(action.url ?? "")}">`)}
+        ${field(
+          "Style",
+          `<select class="input ve-input" data-nested="${prefix}.style">
+            <option value="primary" ${(action.style ?? "primary") === "primary" ? "selected" : ""}>Primary</option>
+            <option value="secondary" ${action.style === "secondary" ? "selected" : ""}>Secondary</option>
+            <option value="outline" ${action.style === "outline" ? "selected" : ""}>Outline</option>
+          </select>`,
+        )}
+        ${field(
+          "Open in",
+          `<select class="input ve-input" data-nested="${prefix}.target">
+            <option value="_self" ${(action.target ?? "_self") === "_self" ? "selected" : ""}>Same tab</option>
+            <option value="_blank" ${action.target === "_blank" ? "selected" : ""}>New tab</option>
+          </select>`,
+        )}
+      </div>`;
+  }
+
+  function mediaFields(prefix, media = {}) {
+    return `
+      <div class="ve-control-group">
+        <h4 class="ve-control-group-title">Image</h4>
+        <p><button type="button" class="btn btn-secondary btn-sm" data-action="pick-nested-media" data-media-path="${prefix}">Choose from library</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-action="clear-nested-media" data-media-path="${prefix}">Remove</button></p>
+        ${field("URL", `<input class="input ve-input" data-nested="${prefix}.imageUrl" value="${R.escapeHtml(media.imageUrl ?? "")}">`)}
+        ${field("Alt text", `<input class="input ve-input" data-nested="${prefix}.alt" value="${R.escapeHtml(media.alt ?? "")}">`)}
+        ${field("Focal X %", `<input class="input ve-input" type="number" min="0" max="100" data-nested="${prefix}.focalPoint.x" value="${Number(media.focalPoint?.x ?? 50)}">`)}
+        ${field("Focal Y %", `<input class="input ve-input" type="number" min="0" max="100" data-nested="${prefix}.focalPoint.y" value="${Number(media.focalPoint?.y ?? 50)}">`)}
+      </div>`;
+  }
+
+  function setNestedProp(obj, path, value) {
+    const parts = path.split(".");
+    let cursor = obj;
+    for (let i = 0; i < parts.length - 1; i += 1) {
+      const key = parts[i];
+      if (!cursor[key] || typeof cursor[key] !== "object") cursor[key] = {};
+      cursor = cursor[key];
+    }
+    const last = parts[parts.length - 1];
+    cursor[last] = value;
+  }
+
+  function marketingInspector(block) {
+    const p = block.props;
+    const commonText = `
+      ${field("Eyebrow", `<input class="input ve-input" data-prop="eyebrow" value="${R.escapeHtml(p.eyebrow ?? "")}">`)}
+      ${field("Heading", `<input class="input ve-input" data-prop="heading" value="${R.escapeHtml(p.heading ?? "")}">`)}
+      ${field(
+        "Heading level",
+        `<select class="input ve-input" data-prop="headingLevel">
+          ${[1, 2, 3, 4, 5, 6]
+            .map((n) => `<option value="${n}" ${Number(p.headingLevel ?? 2) === n ? "selected" : ""}>H${n}</option>`)
+            .join("")}
+        </select>`,
+      )}
+      ${field("Description", `<textarea class="textarea ve-input" data-prop="description" rows="3">${R.escapeHtml(p.description ?? "")}</textarea>`)}
+    `;
+
+    if (block.type === "hero") {
+      return `
+        ${commonText}
+        ${field(
+          "Layout",
+          `<select class="input ve-input" data-prop="layout">
+            <option value="centered" ${p.layout === "centered" ? "selected" : ""}>Centered</option>
+            <option value="split-left" ${p.layout === "split-left" ? "selected" : ""}>Split (content left)</option>
+            <option value="split-right" ${p.layout === "split-right" ? "selected" : ""}>Split (image left)</option>
+            <option value="overlay" ${p.layout === "overlay" ? "selected" : ""}>Overlay</option>
+          </select>`,
+        )}
+        ${field(
+          "Content alignment",
+          `<select class="input ve-input" data-prop="contentAlignment">
+            <option value="left" ${p.contentAlignment === "left" ? "selected" : ""}>Left</option>
+            <option value="center" ${(p.contentAlignment ?? "center") === "center" ? "selected" : ""}>Center</option>
+            <option value="right" ${p.contentAlignment === "right" ? "selected" : ""}>Right</option>
+          </select>`,
+        )}
+        ${field(
+          "Vertical alignment",
+          `<select class="input ve-input" data-prop="verticalAlignment">
+            <option value="top" ${p.verticalAlignment === "top" ? "selected" : ""}>Top</option>
+            <option value="center" ${(p.verticalAlignment ?? "center") === "center" ? "selected" : ""}>Center</option>
+            <option value="bottom" ${p.verticalAlignment === "bottom" ? "selected" : ""}>Bottom</option>
+          </select>`,
+        )}
+        ${field("Min height", `<input class="input ve-input" data-nested="minHeight.desktop" value="${R.escapeHtml(p.minHeight?.desktop ?? "28rem")}">`)}
+        ${field("Content width", `<input class="input ve-input" data-prop="contentWidth" value="${R.escapeHtml(p.contentWidth ?? "42rem")}">`)}
+        ${field("Background color", `<input class="input ve-input" data-nested="background.color" value="${R.escapeHtml(typeof p.background?.color === "string" ? p.background.color : p.background?.color?.value ?? "")}">`)}
+        ${field("Overlay enabled", `<label class="checkbox-row"><input type="checkbox" class="ve-input" data-nested="overlay.enabled" ${p.overlay?.enabled ? "checked" : ""}> Enable overlay</label>`)}
+        ${field("Overlay opacity", `<input class="input ve-input" type="number" min="0" max="1" step="0.05" data-nested="overlay.opacity" value="${Number(p.overlay?.opacity ?? 0.4)}">`)}
+        ${field("Padding", `<input class="input ve-input" data-nested="spacing.padding" value="${R.escapeHtml(p.spacing?.padding ?? "")}">`)}
+        ${mediaFields("media", p.media)}
+        ${actionFields("primaryAction", p.primaryAction)}
+        ${actionFields("secondaryAction", p.secondaryAction)}
+      `;
+    }
+
+    if (block.type === "call_to_action") {
+      return `
+        ${commonText}
+        ${field(
+          "Layout",
+          `<select class="input ve-input" data-prop="layout">
+            <option value="centered" ${p.layout === "centered" ? "selected" : ""}>Centered</option>
+            <option value="horizontal" ${p.layout === "horizontal" ? "selected" : ""}>Horizontal</option>
+            <option value="split" ${p.layout === "split" ? "selected" : ""}>Split with image</option>
+            <option value="banner" ${p.layout === "banner" ? "selected" : ""}>Banner</option>
+            <option value="boxed" ${p.layout === "boxed" ? "selected" : ""}>Boxed panel</option>
+          </select>`,
+        )}
+        ${field(
+          "Content alignment",
+          `<select class="input ve-input" data-prop="contentAlignment">
+            <option value="left" ${p.contentAlignment === "left" ? "selected" : ""}>Left</option>
+            <option value="center" ${(p.contentAlignment ?? "center") === "center" ? "selected" : ""}>Center</option>
+            <option value="right" ${p.contentAlignment === "right" ? "selected" : ""}>Right</option>
+          </select>`,
+        )}
+        ${field("Background color", `<input class="input ve-input" data-nested="background.color" value="${R.escapeHtml(typeof p.background?.color === "string" ? p.background.color : p.background?.color?.value ?? "")}">`)}
+        ${field("Padding", `<input class="input ve-input" data-nested="spacing.padding" value="${R.escapeHtml(p.spacing?.padding ?? "")}">`)}
+        ${field("Stack on mobile", `<label class="checkbox-row"><input type="checkbox" class="ve-input" data-prop="stackOnMobile" ${p.stackOnMobile ? "checked" : ""}> Stack on mobile</label>`)}
+        ${mediaFields("media", p.media)}
+        ${actionFields("primaryAction", p.primaryAction)}
+        ${actionFields("secondaryAction", p.secondaryAction)}
+      `;
+    }
+
+    if (block.type === "card") {
+      return `
+        ${commonText}
+        ${field(
+          "Orientation",
+          `<select class="input ve-input" data-prop="orientation">
+            <option value="vertical" ${(p.orientation ?? "vertical") === "vertical" ? "selected" : ""}>Vertical</option>
+            <option value="horizontal-left" ${p.orientation === "horizontal-left" ? "selected" : ""}>Horizontal image left</option>
+            <option value="horizontal-right" ${p.orientation === "horizontal-right" ? "selected" : ""}>Horizontal image right</option>
+            <option value="overlay" ${p.orientation === "overlay" ? "selected" : ""}>Image overlay</option>
+            <option value="text-only" ${p.orientation === "text-only" ? "selected" : ""}>Text only</option>
+          </select>`,
+        )}
+        ${field(
+          "Link mode",
+          `<select class="input ve-input" data-prop="linkMode">
+            <option value="button" ${(p.linkMode ?? "button") === "button" ? "selected" : ""}>Button only</option>
+            <option value="card" ${p.linkMode === "card" ? "selected" : ""}>Entire card</option>
+          </select>`,
+        )}
+        ${field("Link URL", `<input class="input ve-input" data-prop="linkUrl" value="${R.escapeHtml(p.linkUrl ?? "")}">`)}
+        ${field("Button label", `<input class="input ve-input" data-prop="buttonLabel" value="${R.escapeHtml(p.buttonLabel ?? "")}">`)}
+        ${field(
+          "Button style",
+          `<select class="input ve-input" data-prop="buttonStyle">
+            <option value="primary" ${(p.buttonStyle ?? "primary") === "primary" ? "selected" : ""}>Primary</option>
+            <option value="secondary" ${p.buttonStyle === "secondary" ? "selected" : ""}>Secondary</option>
+            <option value="outline" ${p.buttonStyle === "outline" ? "selected" : ""}>Outline</option>
+          </select>`,
+        )}
+        ${field(
+          "Text alignment",
+          `<select class="input ve-input" data-prop="textAlignment">
+            <option value="left" ${(p.textAlignment ?? "left") === "left" ? "selected" : ""}>Left</option>
+            <option value="center" ${p.textAlignment === "center" ? "selected" : ""}>Center</option>
+            <option value="right" ${p.textAlignment === "right" ? "selected" : ""}>Right</option>
+          </select>`,
+        )}
+        ${field(
+          "Aspect ratio",
+          `<select class="input ve-input" data-prop="aspectRatio">
+            <option value="16/9" ${(p.aspectRatio ?? "16/9") === "16/9" ? "selected" : ""}>16:9</option>
+            <option value="4/3" ${p.aspectRatio === "4/3" ? "selected" : ""}>4:3</option>
+            <option value="1/1" ${p.aspectRatio === "1/1" ? "selected" : ""}>1:1</option>
+          </select>`,
+        )}
+        ${mediaFields("media", p.media)}
+      `;
+    }
+
+    if (block.type === "image_box") {
+      return `
+        ${commonText}
+        ${field(
+          "Layout",
+          `<select class="input ve-input" data-prop="layout">
+            <option value="image-left" ${(p.layout ?? "image-left") === "image-left" ? "selected" : ""}>Image left</option>
+            <option value="image-right" ${p.layout === "image-right" ? "selected" : ""}>Image right</option>
+            <option value="image-above" ${p.layout === "image-above" ? "selected" : ""}>Image above</option>
+            <option value="content-above" ${p.layout === "content-above" ? "selected" : ""}>Content above</option>
+            <option value="overlay" ${p.layout === "overlay" ? "selected" : ""}>Overlay</option>
+          </select>`,
+        )}
+        ${field("Image width %", `<input class="input ve-input" type="number" min="20" max="80" data-prop="imageWidth" value="${Number(p.imageWidth ?? 50)}">`)}
+        ${field("Stack on mobile", `<label class="checkbox-row"><input type="checkbox" class="ve-input" data-prop="stackOnMobile" ${p.stackOnMobile ? "checked" : ""}> Stack on mobile</label>`)}
+        ${field("Reverse on mobile", `<label class="checkbox-row"><input type="checkbox" class="ve-input" data-prop="reverseOnMobile" ${p.reverseOnMobile ? "checked" : ""}> Reverse on mobile</label>`)}
+        ${mediaFields("media", p.media)}
+        ${actionFields("primaryAction", p.primaryAction)}
+        ${actionFields("secondaryAction", p.secondaryAction)}
+      `;
+    }
+
+    if (block.type === "feature_grid") {
+      const items = Array.isArray(p.items) ? p.items : [];
+      const itemEditor = items
+        .map(
+          (item, index) => `
+          <div class="ve-repeater-item" data-item-index="${index}">
+            <div class="ve-repeater-item-header">
+              <strong>Item ${index + 1}</strong>
+              <span>
+                <button type="button" class="btn btn-secondary btn-sm" data-feature-action="up" data-item-index="${index}">↑</button>
+                <button type="button" class="btn btn-secondary btn-sm" data-feature-action="down" data-item-index="${index}">↓</button>
+                <button type="button" class="btn btn-secondary btn-sm" data-feature-action="duplicate" data-item-index="${index}">⧉</button>
+                <button type="button" class="btn btn-secondary btn-sm" data-feature-action="delete" data-item-index="${index}">✕</button>
+              </span>
+            </div>
+            ${field("Heading", `<input class="input ve-input" data-nested="items.${index}.heading" value="${R.escapeHtml(item.heading ?? "")}">`)}
+            ${field("Description", `<textarea class="textarea ve-input" rows="2" data-nested="items.${index}.description">${R.escapeHtml(item.description ?? "")}</textarea>`)}
+            ${field("Icon", `<input class="input ve-input" data-nested="items.${index}.icon" value="${R.escapeHtml(item.icon ?? "")}" placeholder="Emoji or short text">`)}
+            ${field("Link label", `<input class="input ve-input" data-nested="items.${index}.linkLabel" value="${R.escapeHtml(item.linkLabel ?? "")}">`)}
+            ${field("Link URL", `<input class="input ve-input" data-nested="items.${index}.linkUrl" value="${R.escapeHtml(item.linkUrl ?? "")}">`)}
+          </div>`,
+        )
+        .join("");
+      return `
+        ${commonText}
+        ${field(
+          "Display style",
+          `<select class="input ve-input" data-prop="displayStyle">
+            <option value="plain" ${p.displayStyle === "plain" ? "selected" : ""}>Plain</option>
+            <option value="cards" ${(p.displayStyle ?? "cards") === "cards" ? "selected" : ""}>Cards</option>
+            <option value="bordered" ${p.displayStyle === "bordered" ? "selected" : ""}>Bordered</option>
+            <option value="icons" ${p.displayStyle === "icons" ? "selected" : ""}>Icons</option>
+            <option value="images" ${p.displayStyle === "images" ? "selected" : ""}>Images</option>
+          </select>`,
+        )}
+        ${field("Desktop columns", `<input class="input ve-input" type="number" min="1" max="6" data-nested="columns.desktop" value="${Number(p.columns?.desktop ?? 3)}">`)}
+        ${field("Tablet columns", `<input class="input ve-input" type="number" min="1" max="6" data-nested="columns.tablet" value="${Number(p.columns?.tablet ?? 2)}">`)}
+        ${field("Mobile columns", `<input class="input ve-input" type="number" min="1" max="6" data-nested="columns.mobile" value="${Number(p.columns?.mobile ?? 1)}">`)}
+        ${field("Gap", `<input class="input ve-input" data-nested="gap.desktop" value="${R.escapeHtml(p.gap?.desktop ?? "1.5rem")}">`)}
+        ${field("Equal height", `<label class="checkbox-row"><input type="checkbox" class="ve-input" data-prop="equalHeight" ${p.equalHeight ? "checked" : ""}> Equal height items</label>`)}
+        <div class="ve-repeater">
+          <div class="ve-repeater-toolbar">
+            <strong>Feature items</strong>
+            <button type="button" class="btn btn-secondary btn-sm" data-feature-action="add">Add item</button>
+          </div>
+          ${itemEditor}
+        </div>
+      `;
+    }
+
+    return "";
   }
 
   function sanitizeInline(html) {
@@ -243,6 +504,7 @@
       });
 
       this.canvas.addEventListener("keydown", (event) => {
+        if (event.target.closest?.("[contenteditable='true']")) return;
         if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "z") {
           event.preventDefault();
           if (event.shiftKey) this.redo();
@@ -371,13 +633,31 @@
       }
     }
 
-    select(id) {
+    select(id, options = {}) {
+      const soft = options.soft === true;
+      const changed = this.selectedId !== id;
       this.selectedId = id;
       this.rightTab = "block";
       this.rightOpen = true;
       this.root.querySelector("[data-ve-right]")?.classList.remove("is-collapsed");
       this.root.querySelector("[data-ve='toggle-right']")?.classList.add("is-active");
+
+      if (soft) {
+        this.updateCanvasSelection();
+        this.renderLeft();
+        if (changed) this.renderRight();
+        return;
+      }
       this.render();
+    }
+
+    updateCanvasSelection() {
+      this.canvas?.querySelectorAll("[data-block-id]").forEach((el) => {
+        if (!el.classList.contains("ve-block") && !el.classList.contains("ve-column")) return;
+        if (el.classList.contains("ve-block")) {
+          el.classList.toggle("is-selected", el.dataset.blockId === this.selectedId);
+        }
+      });
     }
 
     addBlock(type, parentId = null, index = undefined) {
@@ -442,7 +722,7 @@
     }
 
     handleCanvasAction(action, blockId) {
-      if (action === "select") this.select(blockId);
+      if (action === "select") this.select(blockId, { soft: true });
       if (["up", "down", "duplicate", "delete"].includes(action)) {
         this.handleStructureAction(action, blockId);
       }
@@ -570,10 +850,15 @@
         node.addEventListener("click", (event) => {
           if (event.target.closest("[data-canvas-action],[data-add-type],[data-ve-canvas-title]")) return;
           event.stopPropagation();
-          this.select(id);
+          this.select(id, { soft: true });
         });
+        if (!node.classList.contains("ve-block")) return;
         node.setAttribute("draggable", "true");
         node.addEventListener("dragstart", (event) => {
+          if (event.target.closest("[contenteditable='true']")) {
+            event.preventDefault();
+            return;
+          }
           this.dragId = id;
           event.dataTransfer.setData("application/x-jess-block", id);
           event.dataTransfer.effectAllowed = "move";
@@ -599,17 +884,61 @@
       });
 
       this.canvas.querySelectorAll("[data-inline-edit]").forEach((el) => {
-        el.addEventListener("blur", () => {
+        let historyPushed = false;
+        const syncText = () => {
           const id = el.closest("[data-block-id]")?.dataset.blockId;
           const found = id ? R.findBlock(this.doc.blocks, id) : null;
           if (!found) return;
-          this.pushHistory();
           if (found.block.type === "paragraph" || found.block.type === "heading") {
             found.block.props.text = plainFromHtml(el.innerHTML);
+            el.dataset.empty = found.block.props.text.trim() ? "false" : "true";
           }
           this.markDirty();
-          this.renderRight();
+        };
+        el.addEventListener("focus", () => {
+          historyPushed = false;
+          this.select(el.closest("[data-block-id]")?.dataset.blockId, { soft: true });
         });
+        el.addEventListener("input", () => {
+          if (!historyPushed) {
+            this.pushHistory();
+            historyPushed = true;
+          }
+          syncText();
+        });
+        el.addEventListener("blur", () => {
+          syncText();
+        });
+        el.addEventListener("keydown", (event) => {
+          event.stopPropagation();
+        });
+      });
+
+      this.canvas.querySelectorAll("[data-inline-prop]").forEach((el) => {
+        let historyPushed = false;
+        const syncProp = () => {
+          const id = el.closest("[data-block-id]")?.dataset.blockId;
+          const found = id ? R.findBlock(this.doc.blocks, id) : null;
+          if (!found) return;
+          const prop = el.dataset.inlineProp;
+          found.block.props[prop] = plainFromHtml(el.innerHTML);
+          el.dataset.empty = String(found.block.props[prop] ?? "").trim() ? "false" : "true";
+          this.markDirty();
+          this.renderLeft();
+        };
+        el.addEventListener("focus", () => {
+          historyPushed = false;
+          this.select(el.closest("[data-block-id]")?.dataset.blockId, { soft: true });
+        });
+        el.addEventListener("input", () => {
+          if (!historyPushed) {
+            this.pushHistory();
+            historyPushed = true;
+          }
+          syncProp();
+        });
+        el.addEventListener("blur", syncProp);
+        el.addEventListener("keydown", (event) => event.stopPropagation());
       });
     }
 
@@ -662,23 +991,27 @@
         </div>`;
 
       if (block.type === "paragraph") {
+        const text = String(block.props.text ?? "");
+        const empty = text.trim() ? "false" : "true";
         return `<div class="ve-block${selected}" data-block-id="${block.id}" data-block-index="${index}">
           ${toolbar}
-          <p class="ve-inline ${R.blockClass ? "" : ""} align-${R.getAlignment(block)}" contenteditable="true" data-inline-edit>${R.escapeHtml(block.props.text) || "<span class='muted'>Start writing…</span>"}</p>
+          <p class="ve-inline align-${R.getAlignment(block)}" contenteditable="true" data-inline-edit data-placeholder="Start writing…" data-empty="${empty}">${R.escapeHtml(text)}</p>
         </div>`;
       }
       if (block.type === "heading") {
         const tag = `h${Math.min(6, Math.max(1, Number(block.props.level ?? 2)))}`;
+        const text = String(block.props.text ?? "");
+        const empty = text.trim() ? "false" : "true";
         return `<div class="ve-block${selected}" data-block-id="${block.id}" data-block-index="${index}">
           ${toolbar}
-          <${tag} class="ve-inline align-${R.getAlignment(block)}" contenteditable="true" data-inline-edit>${R.escapeHtml(block.props.text) || "Heading"}</${tag}>
+          <${tag} class="ve-inline align-${R.getAlignment(block)}" contenteditable="true" data-inline-edit data-placeholder="Heading" data-empty="${empty}">${R.escapeHtml(text)}</${tag}>
         </div>`;
       }
       if (block.type === "columns") {
         const cols = (block.children ?? [])
           .map(
             (col) => `
-            <div class="ve-column" data-block-id="${col.id}">
+            <div class="ve-column" data-block-id="${col.id}" style="flex:1 1 ${R.escapeHtml(col.props?.width || "0")}">
               ${(col.children ?? []).map((child, childIndex) => this.renderCanvasBlock(child, childIndex)).join("") || `<button type="button" class="btn btn-secondary btn-sm" data-add-type="paragraph" data-select-id="${col.id}">Add block</button>`}
             </div>`,
           )
@@ -686,6 +1019,22 @@
         return `<div class="ve-block ve-columns-block${selected}" data-block-id="${block.id}" data-block-index="${index}">
           ${toolbar}
           <div class="ve-columns">${cols}</div>
+        </div>`;
+      }
+
+      if (["hero", "call_to_action", "card", "image_box", "feature_grid"].includes(block.type)) {
+        const heading = String(block.props.heading ?? "");
+        const description = String(block.props.description ?? "");
+        const eyebrow = String(block.props.eyebrow ?? "");
+        const layout = String(block.props.layout || block.props.orientation || "");
+        return `<div class="ve-block ve-marketing-block${selected}" data-block-id="${block.id}" data-block-index="${index}">
+          ${toolbar}
+          <div class="ve-marketing-canvas jess-content jess-${R.escapeHtml(block.type)} layout-${R.escapeHtml(layout)}">
+            <p class="jess-eyebrow ve-inline" contenteditable="true" data-inline-prop="eyebrow" data-placeholder="Eyebrow" data-empty="${eyebrow.trim() ? "false" : "true"}">${R.escapeHtml(eyebrow)}</p>
+            <h2 class="jess-section-heading ve-inline" contenteditable="true" data-inline-prop="heading" data-placeholder="Add heading…" data-empty="${heading.trim() ? "false" : "true"}">${R.escapeHtml(heading)}</h2>
+            <div class="jess-section-desc ve-inline" contenteditable="true" data-inline-prop="description" data-placeholder="Add description…" data-empty="${description.trim() ? "false" : "true"}">${R.escapeHtml(description)}</div>
+            <p class="muted ve-inspector-hint">Layout: ${R.escapeHtml(layout || "default")} · Edit buttons, media, and layout in the Block panel</p>
+          </div>
         </div>`;
       }
 
@@ -762,7 +1111,22 @@
           this.pushHistory();
           this.readInspector(input, block);
           this.markDirty();
+          if (
+            input.dataset.prop === "columnCount" ||
+            input.dataset.prop === "layout" ||
+            input.dataset.prop === "orientation" ||
+            input.dataset.prop === "displayStyle" ||
+            input.dataset.prop === "level" ||
+            input.dataset.prop === "headingLevel" ||
+            input.dataset.nested?.startsWith("columns.")
+          ) {
+            this.renderLeft();
+            this.renderCanvas();
+            this.renderRight();
+            return;
+          }
           this.renderCanvas();
+          this.renderLeft();
         });
       });
 
@@ -781,6 +1145,70 @@
           },
         });
       });
+
+      this.rightBody.querySelectorAll("[data-action='pick-nested-media']").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          if (!global.JessMediaLibrary) return;
+          const path = btn.dataset.mediaPath || "media";
+          global.JessMediaLibrary.open({
+            mimeType: "image/*",
+            onSelect: (item) => {
+              this.pushHistory();
+              if (!block.props[path] || typeof block.props[path] !== "object") block.props[path] = R.emptyMedia?.() || {};
+              block.props[path].type = "image";
+              block.props[path].imageUrl = item.resolved_url || item.public_url || "";
+              block.props[path].imageId = item.id;
+              block.props[path].alt = item.alt_text || item.title || block.props[path].alt || "";
+              this.markDirty();
+              this.render();
+            },
+          });
+        });
+      });
+
+      this.rightBody.querySelectorAll("[data-action='clear-nested-media']").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const path = btn.dataset.mediaPath || "media";
+          this.pushHistory();
+          block.props[path] = R.emptyMedia?.() || { type: "none", imageUrl: "", imageId: "", alt: "" };
+          this.markDirty();
+          this.render();
+        });
+      });
+
+      this.rightBody.querySelectorAll("[data-feature-action]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          if (block.type !== "feature_grid") return;
+          const items = Array.isArray(block.props.items) ? [...block.props.items] : [];
+          const index = Number(btn.dataset.itemIndex);
+          const action = btn.dataset.featureAction;
+          this.pushHistory();
+          if (action === "add") {
+            items.push({
+              id: R.createItemId(),
+              icon: "",
+              image: R.emptyMedia?.() || {},
+              heading: "",
+              description: "",
+              linkUrl: "",
+              linkLabel: "",
+            });
+          } else if (action === "delete" && Number.isFinite(index)) {
+            items.splice(index, 1);
+          } else if (action === "duplicate" && Number.isFinite(index) && items[index]) {
+            items.splice(index + 1, 0, { ...items[index], id: R.createItemId() });
+          } else if (action === "up" && index > 0) {
+            const [row] = items.splice(index, 1);
+            items.splice(index - 1, 0, row);
+          } else if (action === "down" && index < items.length - 1) {
+            const [row] = items.splice(index, 1);
+            items.splice(index + 1, 0, row);
+          }
+          block.props.items = items;
+          this.markDirty();
+          this.render();
+        });
+      });
     }
 
     renderInspectorFields(block) {
@@ -796,10 +1224,9 @@
 
       switch (block.type) {
         case "paragraph":
-          return `${field("Text", `<textarea class="textarea ve-input" data-prop="text" rows="4">${R.escapeHtml(block.props.text)}</textarea>`)}${alignField}`;
+          return `${alignField}<p class="muted ve-inspector-hint">Edit text directly in the canvas.</p>`;
         case "heading":
           return `
-            ${field("Text", `<input class="input ve-input" data-prop="text" value="${R.escapeHtml(block.props.text)}">`)}
             ${field(
               "Level",
               `<select class="input ve-input" data-prop="level">
@@ -811,7 +1238,8 @@
                   .join("")}
               </select>`,
             )}
-            ${alignField}`;
+            ${alignField}
+            <p class="muted ve-inspector-hint">Edit heading text directly in the canvas.</p>`;
         case "image":
           return `
             ${field("URL", `<input class="input ve-input" data-prop="url" value="${R.escapeHtml(block.props.url)}">`)}
@@ -847,19 +1275,44 @@
             ${field("Width", `<input class="input ve-input" data-prop="width" value="${R.escapeHtml(block.props.width ?? "100%")}">`)}
             ${field("Color", `<input class="input ve-input" data-prop="color" value="${R.escapeHtml(block.props.color ?? "currentColor")}">`)}
             ${alignField}`;
-        case "columns":
+        case "columns": {
+          const count = Number(block.props.columnCount ?? block.children?.length ?? 2);
+          const ratios = Array.isArray(block.props.ratios) ? block.props.ratios : [];
+          const layoutKey =
+            ratios.length === 2 && ratios[0] === "33%" && ratios[1] === "67%"
+              ? "33-67"
+              : ratios.length === 2 && ratios[0] === "67%" && ratios[1] === "33%"
+                ? "67-33"
+                : ratios.length === 3
+                  ? "33-33-33"
+                  : ratios.length === 4
+                    ? "25-25-25-25"
+                    : count === 3
+                      ? "33-33-33"
+                      : count === 4
+                        ? "25-25-25-25"
+                        : "50-50";
           return `
+            ${field(
+              "Columns",
+              `<select class="input ve-input" data-prop="columnCount">
+                ${[1, 2, 3, 4, 5, 6]
+                  .map((n) => `<option value="${n}" ${count === n ? "selected" : ""}>${n}</option>`)
+                  .join("")}
+              </select>`,
+            )}
             ${field(
               "Layout",
               `<select class="input ve-input" data-prop="layout">
-                <option value="50-50">50 / 50</option>
-                <option value="33-67">33 / 67</option>
-                <option value="67-33">67 / 33</option>
-                <option value="33-33-33">Three equal</option>
-                <option value="25-25-25-25">Four equal</option>
+                <option value="50-50" ${layoutKey === "50-50" ? "selected" : ""}>50 / 50</option>
+                <option value="33-67" ${layoutKey === "33-67" ? "selected" : ""}>33 / 67</option>
+                <option value="67-33" ${layoutKey === "67-33" ? "selected" : ""}>67 / 33</option>
+                <option value="33-33-33" ${layoutKey === "33-33-33" ? "selected" : ""}>Three equal</option>
+                <option value="25-25-25-25" ${layoutKey === "25-25-25-25" ? "selected" : ""}>Four equal</option>
               </select>`,
             )}
             ${field("Gap", `<input class="input ve-input" data-prop="gap" value="${R.escapeHtml(block.props.gap ?? "1.5rem")}">`)}`;
+        }
         case "spacer":
           return field("Height", `<input class="input ve-input" data-prop="height" value="${R.escapeHtml(block.props.height ?? "2rem")}">`);
         case "quote":
@@ -882,6 +1335,12 @@
             .join("");
           return field("Form", `<select class="input ve-input" data-prop="form_slug"><option value="">Select</option>${options}</select>`);
         }
+        case "hero":
+        case "call_to_action":
+        case "card":
+        case "image_box":
+        case "feature_grid":
+          return marketingInspector(block);
         default:
           return `<p class="muted">No inspector fields for this block.</p>`;
       }
@@ -893,6 +1352,35 @@
         block.style[input.dataset.style] = input.value;
         return;
       }
+      if (input.dataset.nested) {
+        let value = input.type === "checkbox" ? input.checked : input.value;
+        if (input.type === "number") value = Number(input.value);
+        if (input.dataset.nested.endsWith(".color") && typeof value === "string" && value) {
+          value = { type: "custom", value };
+        }
+        if (input.dataset.nested.includes("items.") && input.dataset.nested.endsWith(".heading")) {
+          // keep as string
+        }
+        // items.N.field paths need array handling
+        const nested = input.dataset.nested;
+        if (nested.startsWith("items.")) {
+          const parts = nested.split(".");
+          const index = Number(parts[1]);
+          const fieldName = parts.slice(2).join(".");
+          if (!Array.isArray(block.props.items)) block.props.items = [];
+          if (!block.props.items[index] || typeof block.props.items[index] !== "object") {
+            block.props.items[index] = { id: R.createItemId() };
+          }
+          setNestedProp(block.props.items[index], fieldName, value);
+          return;
+        }
+        setNestedProp(block.props, nested, value);
+        if (nested.startsWith("media.") && (nested.endsWith("imageUrl") || nested.endsWith("imageId"))) {
+          if (!block.props.media) block.props.media = {};
+          if (block.props.media.imageUrl || block.props.media.imageId) block.props.media.type = "image";
+        }
+        return;
+      }
       const prop = input.dataset.prop;
       if (!prop) return;
       if (prop === "alignment") {
@@ -900,12 +1388,12 @@
         block.style.textAlign = input.value;
         return;
       }
-      if (prop === "ordered") {
-        block.props.ordered = input.checked;
+      if (prop === "ordered" || prop === "stackOnMobile" || prop === "reverseOnMobile" || prop === "equalHeight") {
+        block.props[prop] = input.checked;
         return;
       }
-      if (prop === "level") {
-        block.props.level = Number(input.value);
+      if (prop === "level" || prop === "headingLevel" || prop === "imageWidth") {
+        block.props[prop] = Number(input.value);
         return;
       }
       if (prop === "items") {
@@ -915,7 +1403,28 @@
           .filter(Boolean);
         return;
       }
-      if (prop === "layout") {
+      if (prop === "columnCount") {
+        const count = Math.min(6, Math.max(1, Number(input.value) || 2));
+        const ratios = Array.from({ length: count }, () => `${Math.round((100 / count) * 100) / 100}%`);
+        block.props.columnCount = count;
+        block.props.ratios = ratios;
+        block.children = block.children ?? [];
+        while (block.children.length < count) {
+          block.children.push(
+            R.normalizeBlock({
+              type: "column",
+              props: { width: ratios[block.children.length] },
+              children: [R.createBlock("paragraph")],
+            }),
+          );
+        }
+        while (block.children.length > count) block.children.pop();
+        block.children.forEach((col, index) => {
+          col.props.width = ratios[index];
+        });
+        return;
+      }
+      if (prop === "layout" && block.type === "columns") {
         const layouts = {
           "50-50": ["50%", "50%"],
           "33-67": ["33%", "67%"],
@@ -926,6 +1435,7 @@
         const ratios = layouts[input.value] ?? ["50%", "50%"];
         block.props.ratios = ratios;
         block.props.columnCount = ratios.length;
+        block.children = block.children ?? [];
         while (block.children.length < ratios.length) {
           block.children.push(
             R.normalizeBlock({

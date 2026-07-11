@@ -1,4 +1,6 @@
 import type { Block, BlockStyle, ContentDocument } from "./types";
+import { defaultMarketingProps, normalizeMarketingProps, remintFeatureItemIds, renderMarketingBlock } from "./marketing";
+import { migrateDocument } from "./migrate";
 
 export type { Block, BlockStyle, ContentDocument } from "./types";
 
@@ -102,6 +104,9 @@ export function renderBlock(block: Block): string {
   const classes = blockClass(block.type, block);
   const styleAttr = inlineStyle(block);
   const idAttr = anchorAttr(block);
+
+  const marketing = renderMarketingBlock(block, classes, idAttr);
+  if (marketing != null) return marketing;
 
   switch (block.type) {
     case "paragraph":
@@ -214,6 +219,9 @@ export function createBlockId(): string {
 }
 
 export function defaultBlockProps(type: string): Record<string, unknown> {
+  const marketing = defaultMarketingProps(type);
+  if (marketing) return marketing;
+
   switch (type) {
     case "paragraph":
       return { text: "", alignment: "left" };
@@ -287,10 +295,14 @@ export function createBlock(type: string): Block {
 export function normalizeBlock(raw: Partial<Block>): Block {
   const type = String(raw.type ?? "paragraph");
   const defaults = defaultBlockProps(type);
-  const props = { ...defaults, ...(raw.props ?? {}) };
+  let props = { ...defaults, ...(raw.props ?? {}) };
   const alignment = props.alignment;
   if ("alignment" in props) {
     delete props.alignment;
+  }
+
+  if (["hero", "call_to_action", "card", "image_box", "feature_grid"].includes(type)) {
+    props = normalizeMarketingProps(type, props);
   }
 
   let children = Array.isArray(raw.children)
@@ -323,10 +335,10 @@ export function parseContentDocument(
     try {
       const parsed = JSON.parse(contentJson) as Partial<ContentDocument>;
       if (Array.isArray(parsed.blocks)) {
-        return {
+        return migrateDocument({
           version: Number(parsed.version ?? 1),
           blocks: parsed.blocks.map((block) => normalizeBlock(block as Partial<Block>)),
-        };
+        });
       }
     } catch {
       // fall through to HTML fallback
@@ -352,10 +364,14 @@ export function parseContentDocument(
 }
 
 export function cloneBlock(source: Block): Block {
+  let props = { ...source.props };
+  if (source.type === "feature_grid") {
+    props = remintFeatureItemIds(props);
+  }
   return normalizeBlock({
     ...source,
     id: createBlockId(),
-    props: { ...source.props },
+    props,
     style: { ...(source.style ?? {}) },
     children: (source.children ?? []).map((child) => cloneBlock(child)),
   });
@@ -372,4 +388,9 @@ export const EDITOR_BLOCK_TYPES = [
   "list",
   "spacer",
   "html",
+  "hero",
+  "call_to_action",
+  "card",
+  "image_box",
+  "feature_grid",
 ] as const;

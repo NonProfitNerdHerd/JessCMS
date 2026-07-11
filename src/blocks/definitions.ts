@@ -73,6 +73,71 @@ const CATEGORY_META: Record<
     icon: "📋",
     keywords: ["forms", "contact"],
   },
+  hero: {
+    category: "layout",
+    icon: "🏔",
+    keywords: ["banner", "header", "masthead", "landing", "intro", "hero"],
+    supports: {
+      align: ["default", "wide", "full"],
+      spacing: true,
+      background: true,
+      color: true,
+      anchor: true,
+      className: true,
+    },
+  },
+  call_to_action: {
+    category: "marketing",
+    icon: "📣",
+    keywords: ["cta", "promo", "banner", "action", "signup"],
+    supports: {
+      align: ["default", "wide", "full"],
+      spacing: true,
+      background: true,
+      color: true,
+      anchor: true,
+      className: true,
+    },
+  },
+  card: {
+    category: "marketing",
+    icon: "🃏",
+    keywords: ["tile", "promo", "box", "content card", "card"],
+    supports: {
+      align: ["left", "center", "right"],
+      spacing: true,
+      background: true,
+      color: true,
+      anchor: true,
+      className: true,
+    },
+  },
+  image_box: {
+    category: "layout",
+    icon: "🖼▤",
+    keywords: ["media", "split", "image text", "feature", "image box"],
+    supports: {
+      align: ["default", "wide", "full"],
+      spacing: true,
+      background: true,
+      color: true,
+      anchor: true,
+      className: true,
+    },
+  },
+  feature_grid: {
+    category: "marketing",
+    icon: "▦",
+    keywords: ["services", "benefits", "features", "icons", "grid"],
+    supports: {
+      align: ["default", "wide", "full"],
+      spacing: true,
+      background: true,
+      color: true,
+      anchor: true,
+      className: true,
+    },
+  },
   embed: {
     category: "media",
     icon: "▶",
@@ -103,6 +168,11 @@ export const VISUAL_EDITOR_BLOCK_TYPES = [
   "list",
   "html",
   "form",
+  "hero",
+  "call_to_action",
+  "card",
+  "image_box",
+  "feature_grid",
 ] as const;
 
 export function getBlockDefinitions(): BlockDefinitionMeta[] {
@@ -132,7 +202,6 @@ export function getBlockDefinitions(): BlockDefinitionMeta[] {
     fromFoundation.push({
       type: "divider",
       label: "Divider",
-      description: "Visible horizontal rule between sections",
       category: "layout",
       icon: "—",
       version: 1,

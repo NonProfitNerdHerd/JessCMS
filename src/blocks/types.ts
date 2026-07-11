@@ -31,6 +31,7 @@ export type BlockCategory =
   | "layout"
   | "design"
   | "content"
+  | "marketing"
   | "dynamic"
   | "advanced";
 

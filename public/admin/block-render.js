@@ -11,6 +11,11 @@
     "spacer",
     "html",
     "form",
+    "hero",
+    "call_to_action",
+    "card",
+    "image_box",
+    "feature_grid",
   ];
 
   const BLOCK_LABELS = {
@@ -26,6 +31,11 @@
     spacer: "Spacer",
     html: "Custom HTML",
     form: "Form",
+    hero: "Hero",
+    call_to_action: "Call to Action",
+    card: "Card",
+    image_box: "Image Box",
+    feature_grid: "Feature Grid",
   };
 
   const BLOCK_CATEGORIES = {
@@ -40,7 +50,159 @@
     spacer: "layout",
     html: "advanced",
     form: "content",
+    hero: "layout",
+    call_to_action: "marketing",
+    card: "marketing",
+    image_box: "layout",
+    feature_grid: "marketing",
   };
+
+  function createItemId() {
+    if (global.crypto?.randomUUID) {
+      return `item_${global.crypto.randomUUID().replace(/-/g, "").slice(0, 10)}`;
+    }
+    return `item_${Math.random().toString(16).slice(2, 12)}`;
+  }
+
+  function emptyAction() {
+    return { label: "", url: "", target: "_self", style: "primary" };
+  }
+
+  function emptyMedia() {
+    return { type: "none", imageId: "", imageUrl: "", alt: "", focalPoint: { x: 50, y: 50 } };
+  }
+
+  function emptyBackground() {
+    return { color: null, image: emptyMedia(), position: "center center", size: "cover", repeat: "no-repeat" };
+  }
+
+  function emptyOverlay() {
+    return { enabled: false, color: { type: "custom", value: "#000000" }, opacity: 0.4 };
+  }
+
+  function emptyBorder() {
+    return { color: null, width: "0", radius: "", style: "solid" };
+  }
+
+  function marketingDefaults(type) {
+    if (type === "hero") {
+      return {
+        version: 1,
+        eyebrow: "",
+        heading: "",
+        headingLevel: 1,
+        description: "",
+        primaryAction: emptyAction(),
+        secondaryAction: emptyAction(),
+        media: emptyMedia(),
+        layout: "centered",
+        contentAlignment: "center",
+        verticalAlignment: "center",
+        minHeight: { desktop: "28rem" },
+        contentWidth: "42rem",
+        background: emptyBackground(),
+        overlay: emptyOverlay(),
+        spacing: { margin: "", padding: "3rem 1.5rem" },
+        border: emptyBorder(),
+        boxShadow: "",
+        stackOnMobile: true,
+      };
+    }
+    if (type === "call_to_action") {
+      return {
+        version: 1,
+        eyebrow: "",
+        heading: "",
+        headingLevel: 2,
+        description: "",
+        primaryAction: emptyAction(),
+        secondaryAction: emptyAction(),
+        media: emptyMedia(),
+        layout: "centered",
+        contentAlignment: "center",
+        background: emptyBackground(),
+        overlay: emptyOverlay(),
+        border: emptyBorder(),
+        boxShadow: "",
+        spacing: { margin: "", padding: "2.5rem 1.5rem" },
+        stackOnMobile: true,
+      };
+    }
+    if (type === "card") {
+      return {
+        version: 1,
+        eyebrow: "",
+        heading: "",
+        headingLevel: 3,
+        description: "",
+        media: emptyMedia(),
+        imagePosition: "top",
+        aspectRatio: "16/9",
+        orientation: "vertical",
+        linkMode: "button",
+        linkUrl: "",
+        linkTarget: "_self",
+        buttonLabel: "",
+        buttonStyle: "primary",
+        textAlignment: "left",
+        background: emptyBackground(),
+        border: { color: { type: "custom", value: "#e2e8f0" }, width: "1px", radius: "0.75rem", style: "solid" },
+        boxShadow: "",
+        spacing: { margin: "", padding: "1.25rem" },
+        hoverStyle: "lift",
+        minHeight: "",
+      };
+    }
+    if (type === "image_box") {
+      return {
+        version: 1,
+        eyebrow: "",
+        heading: "",
+        headingLevel: 2,
+        description: "",
+        media: emptyMedia(),
+        layout: "image-left",
+        imageWidth: 50,
+        verticalAlignment: "center",
+        primaryAction: emptyAction(),
+        secondaryAction: emptyAction(),
+        background: emptyBackground(),
+        overlay: emptyOverlay(),
+        border: emptyBorder(),
+        boxShadow: "",
+        spacing: { margin: "", padding: "2rem 0" },
+        minHeight: "",
+        stackOnMobile: true,
+        reverseOnMobile: false,
+      };
+    }
+    if (type === "feature_grid") {
+      return {
+        version: 1,
+        eyebrow: "",
+        heading: "",
+        headingLevel: 2,
+        description: "",
+        items: [
+          { id: createItemId(), icon: "", image: emptyMedia(), heading: "", description: "", linkUrl: "", linkLabel: "" },
+          { id: createItemId(), icon: "", image: emptyMedia(), heading: "", description: "", linkUrl: "", linkLabel: "" },
+          { id: createItemId(), icon: "", image: emptyMedia(), heading: "", description: "", linkUrl: "", linkLabel: "" },
+        ],
+        displayStyle: "cards",
+        columns: { desktop: 3, tablet: 2, mobile: 1 },
+        gap: { desktop: "1.5rem" },
+        itemAlignment: "left",
+        equalHeight: true,
+        background: emptyBackground(),
+        itemBackground: emptyBackground(),
+        itemBorder: emptyBorder(),
+        itemRadius: "0.75rem",
+        itemShadow: "",
+        spacing: { margin: "", padding: "2rem 0" },
+      };
+    }
+    return null;
+  }
 
   function escapeHtml(value) {
     return String(value ?? "")
@@ -99,6 +261,8 @@
   }
 
   function defaultBlockProps(type) {
+    const marketing = marketingDefaults(type);
+    if (marketing) return marketing;
     switch (type) {
       case "paragraph":
         return { text: "", alignment: "left" };
@@ -191,10 +355,17 @@
   }
 
   function cloneBlock(source) {
+    const props = { ...source.props };
+    if (source.type === "feature_grid" && Array.isArray(props.items)) {
+      props.items = props.items.map((item) => ({
+        ...(item && typeof item === "object" ? item : {}),
+        id: createItemId(),
+      }));
+    }
     return normalizeBlock({
       ...source,
       id: createBlockId(),
-      props: { ...source.props },
+      props,
       style: { ...(source.style ?? {}) },
       children: (source.children ?? []).map((child) => cloneBlock(child)),
     });
@@ -271,9 +442,83 @@
       }
       case "column":
         return `<div class="${classes}">${renderBlocksToHtml(block.children ?? [])}</div>`;
+      case "hero":
+      case "call_to_action":
+      case "card":
+      case "image_box":
+      case "feature_grid":
+        return renderMarketingPreview(block, classes);
       default:
         return `<div class="${classes} jess-unknown-block">Unknown block: ${escapeHtml(block.type)}</div>`;
     }
+  }
+
+  function actionHtml(action) {
+    if (!action || !String(action.label ?? "").trim()) return "";
+    const style = action.style === "secondary" || action.style === "outline" ? action.style : "primary";
+    return `<a class="jess-button ${style}" href="${escapeHtml(action.url || "#")}">${escapeHtml(action.label)}</a>`;
+  }
+
+  function mediaUrl(media) {
+    return media?.imageUrl || media?.url || "";
+  }
+
+  function renderMarketingPreview(block, classes) {
+    const p = block.props ?? {};
+    const heading = String(p.heading ?? "");
+    const eyebrow = String(p.eyebrow ?? "");
+    const description = String(p.description ?? "");
+    const layout = String(p.layout || p.orientation || "centered");
+    const media = p.media || {};
+    const url = mediaUrl(media);
+    const header = `
+      ${eyebrow ? `<p class="jess-eyebrow">${escapeHtml(eyebrow)}</p>` : `<p class="jess-eyebrow muted" data-ph>Eyebrow</p>`}
+      <h2 class="jess-section-heading">${escapeHtml(heading) || `<span class="muted">Add heading…</span>`}</h2>
+      ${description ? `<div class="jess-section-desc">${escapeHtml(description)}</div>` : `<div class="jess-section-desc muted" data-ph>Add description…</div>`}
+    `;
+    const actions = `<div class="jess-actions">${actionHtml(p.primaryAction)}${actionHtml(p.secondaryAction)}</div>`;
+    const image = url
+      ? `<div class="jess-hero-media"><img src="${escapeHtml(url)}" alt="${escapeHtml(media.alt || "")}"></div>`
+      : `<div class="jess-hero-media is-empty muted">Select image</div>`;
+
+    if (block.type === "feature_grid") {
+      const items = Array.isArray(p.items) ? p.items : [];
+      const cols = p.columns || {};
+      const list = items
+        .map(
+          (item) => `<li class="jess-feature-item" data-item-id="${escapeHtml(item.id || "")}">
+            <h3>${escapeHtml(item.heading || "Feature")}</h3>
+            <p>${escapeHtml(item.description || "")}</p>
+          </li>`,
+        )
+        .join("");
+      return `<section class="${classes} jess-feature-grid style-${escapeHtml(p.displayStyle || "cards")}" style="--fg-cols-desktop:${Number(cols.desktop || 3)};--fg-cols-tablet:${Number(cols.tablet || 2)};--fg-cols-mobile:${Number(cols.mobile || 1)}">
+        <div class="jess-feature-grid-header">${header}</div>
+        <ul class="jess-feature-grid-list">${list}</ul>
+      </section>`;
+    }
+
+    if (block.type === "card") {
+      return `<article class="${classes} jess-card orientation-${escapeHtml(layout)}">${url ? image : ""}${header}${p.buttonLabel ? `<span class="jess-button ${escapeHtml(p.buttonStyle || "primary")} is-visual">${escapeHtml(p.buttonLabel)}</span>` : ""}</article>`;
+    }
+
+    return `<section class="${classes} jess-${escapeHtml(block.type)} layout-${escapeHtml(layout)}">
+      <div class="jess-hero-inner">${header}${actions}${block.type !== "call_to_action" ? image : ""}</div>
+    </section>`;
+  }
+
+  function structureLabel(block) {
+    const base = BLOCK_LABELS[block.type] ?? block.type;
+    const heading = String(block.props?.heading ?? "").trim();
+    const truncated = heading.length > 40 ? `${heading.slice(0, 37)}…` : heading;
+    if (block.type === "feature_grid") {
+      const count = Array.isArray(block.props?.items) ? block.props.items.length : 0;
+      return truncated ? `${base}: ${truncated}, ${count} items` : `${base}, ${count} items`;
+    }
+    if (["hero", "call_to_action", "card", "image_box"].includes(block.type) && truncated) {
+      return `${base}: ${truncated}`;
+    }
+    return base;
   }
 
   function parseContentDocument(contentJson, contentHtml) {
@@ -317,7 +562,7 @@
 
   function flattenStructure(blocks, depth = 0, acc = []) {
     for (const block of blocks) {
-      acc.push({ id: block.id, type: block.type, label: BLOCK_LABELS[block.type] ?? block.type, depth });
+      acc.push({ id: block.id, type: block.type, label: structureLabel(block), depth });
       if (block.children?.length) flattenStructure(block.children, depth + 1, acc);
     }
     return acc;
@@ -329,6 +574,7 @@
     BLOCK_CATEGORIES,
     escapeHtml,
     createBlockId,
+    createItemId,
     createBlock,
     normalizeBlock,
     cloneBlock,
@@ -338,5 +584,8 @@
     parseContentDocument,
     findBlock,
     flattenStructure,
+    structureLabel,
+    emptyAction,
+    emptyMedia,
   };
 })(window);

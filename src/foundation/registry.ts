@@ -247,6 +247,58 @@ export const BLOCK_TYPES = [
     },
   },
   {
+    type: "hero",
+    label: "Hero",
+    category: "layout",
+    source: "core",
+    props_schema: {
+      heading: { type: "string" },
+      layout: { type: "string", default: "centered" },
+      headingLevel: { type: "number", default: 1 },
+    },
+  },
+  {
+    type: "call_to_action",
+    label: "Call to Action",
+    category: "marketing",
+    source: "core",
+    props_schema: {
+      heading: { type: "string" },
+      layout: { type: "string", default: "centered" },
+    },
+  },
+  {
+    type: "card",
+    label: "Card",
+    category: "marketing",
+    source: "core",
+    props_schema: {
+      heading: { type: "string" },
+      orientation: { type: "string", default: "vertical" },
+    },
+  },
+  {
+    type: "image_box",
+    label: "Image Box",
+    category: "layout",
+    source: "core",
+    props_schema: {
+      heading: { type: "string" },
+      layout: { type: "string", default: "image-left" },
+    },
+  },
+  {
+    type: "feature_grid",
+    label: "Feature Grid",
+    category: "marketing",
+    source: "core",
+    props_schema: {
+      heading: { type: "string" },
+      items: { type: "array" },
+      displayStyle: { type: "string", default: "cards" },
+    },
+  },
+  {
     type: "plugin_block",
     label: "Plugin Block",
     category: "plugins",

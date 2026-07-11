@@ -87,4 +87,5 @@ ALTER TABLE content_entries ADD COLUMN draft_content_json TEXT;
 | 2 Editor shell | Done |
 | 3 Core editing behavior | Partial (insert/select/delete/duplicate/reorder/DnD/undo/redo; no copy-paste yet) |
 | 4 Foundational blocks | Heading, Paragraph, Button, Divider, Image, Columns (+ keep existing quote/list/spacer/html/form) |
-| 5–9 | Remaining |
+| 5 Marketing / layout blocks | Hero, Call to Action, Card, Image Box, Feature Grid — see `docs/marketing-layout-blocks.md` |
+| 6–9 | Remaining (Gallery, Accordion, Map, Timeline next) |

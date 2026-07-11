@@ -52,6 +52,14 @@ assert(
   "columns supports nesting metadata",
   (blocks.body.data?.items ?? []).some((b) => b.type === "columns"),
 );
+assert(
+  "hero in visual catalog",
+  (blocks.body.data?.visual_editor ?? blocks.body.data?.items ?? []).some((b) => b.type === "hero"),
+);
+assert(
+  "feature_grid in visual catalog",
+  (blocks.body.data?.visual_editor ?? blocks.body.data?.items ?? []).some((b) => b.type === "feature_grid"),
+);
 
 const doc = {
   version: 1,
